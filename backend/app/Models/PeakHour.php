@@ -6,28 +6,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Rating extends Model
+class PeakHour extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
-        'appointment_id',
         'service_id',
-        'overall_rating',
-        'comment',
-        'status',
+        'date',
+        'hour',
+        'appointments_count',
     ];
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function appointment(): BelongsTo
-    {
-        return $this->belongsTo(Appointment::class);
-    }
+    protected $casts = [
+        'date' => 'date',
+    ];
 
     public function service(): BelongsTo
     {

@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
@@ -27,6 +28,10 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+    ];
+
+    protected $appends = [
+        'api_role',
     ];
 
     protected function casts(): array
@@ -70,5 +75,22 @@ class User extends Authenticatable
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    public function getApiRoleAttribute(): string
+    {
+        return in_array($this->role, ['manager', 'employee'], true)
+            ? 'institution'
+            : $this->role;
+    }
+
+    public function citizenConversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class, 'citizen_id');
+    }
+
+    public function institutionConversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class, 'institution_user_id');
     }
 }

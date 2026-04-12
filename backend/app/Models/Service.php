@@ -17,7 +17,12 @@ class Service extends Model
         'name',
         'estimated_duration',
         'max_daily_capacity',
+        'working_hours',
         'status',
+    ];
+
+    protected $casts = [
+        'working_hours' => 'array',
     ];
 
     public function institution(): BelongsTo
@@ -53,5 +58,10 @@ class Service extends Model
     public function analytics(): HasMany
     {
         return $this->hasMany(Analytics::class);
+    }
+
+    public function peakHours(): HasMany
+    {
+        return $this->hasMany(PeakHour::class);
     }
 }
