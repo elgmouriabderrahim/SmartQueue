@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ServiceCounter\StoreServiceCounterRequest;
+use App\Http\Requests\ServiceCounter\UpdateServiceCounterRequest;
 use App\Models\ServiceCounter;
+use App\Services\ServiceCounterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class ServiceCounterController extends Controller
 {
+    public function __construct(private readonly ServiceCounterService $serviceCounterService)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
@@ -18,61 +24,32 @@ class ServiceCounterController extends Controller
             ->latest()
             ->paginate($perPage);
 
-        return response()->json($counters);
+        return $this->success($counters, 'Service counters fetched successfully.');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreServiceCounterRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'service_id' => ['required', 'exists:services,id'],
-            'counter_number' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('service_counters', 'counter_number')->where(
-                    fn ($query) => $query->where('service_id', $request->input('service_id'))
-                ),
-            ],
-            'status' => ['sometimes', Rule::in(['available', 'busy', 'offline'])],
-        ]);
+        $counter = $this->serviceCounterService->create($request->validated());
 
-        $counter = ServiceCounter::create($validated);
-
-        return response()->json($counter->load('service'), 201);
+        return $this->success($counter->load('service'), 'Service counter created successfully.', 201);
     }
 
     public function show(ServiceCounter $serviceCounter): JsonResponse
     {
-        return response()->json($serviceCounter->load(['service', 'appointments']));
+        return $this->success($serviceCounter->load(['service', 'appointments']), 'Service counter fetched successfully.');
     }
 
-    public function update(Request $request, ServiceCounter $serviceCounter): JsonResponse
+    public function update(UpdateServiceCounterRequest $request, ServiceCounter $serviceCounter): JsonResponse
     {
-        $serviceId = $request->input('service_id', $serviceCounter->service_id);
+        $updated = $this->serviceCounterService->update($serviceCounter, $request->validated());
 
-        $validated = $request->validate([
-            'service_id' => ['sometimes', 'required', 'exists:services,id'],
-            'counter_number' => [
-                'sometimes',
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('service_counters', 'counter_number')
-                    ->where(fn ($query) => $query->where('service_id', $serviceId))
-                    ->ignore($serviceCounter->id),
-            ],
-            'status' => ['sometimes', Rule::in(['available', 'busy', 'offline'])],
-        ]);
-
-        $serviceCounter->update($validated);
-
-        return response()->json($serviceCounter->fresh()->load('service'));
+        return $this->success($updated->load('service'), 'Service counter updated successfully.');
     }
 
     public function destroy(ServiceCounter $serviceCounter): JsonResponse
     {
-        $serviceCounter->delete();
+        $this->serviceCounterService->delete($serviceCounter);
 
-        return response()->json(['message' => 'Service counter deleted successfully.']);
+        return $this->success(null, 'Service counter deleted successfully.');
     }
 }

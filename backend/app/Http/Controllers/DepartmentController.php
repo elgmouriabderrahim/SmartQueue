@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Department\StoreDepartmentRequest;
+use App\Http\Requests\Department\UpdateDepartmentRequest;
 use App\Models\Department;
+use App\Services\DepartmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class DepartmentController extends Controller
 {
+    public function __construct(private readonly DepartmentService $departmentService)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
@@ -18,63 +24,32 @@ class DepartmentController extends Controller
             ->latest()
             ->paginate($perPage);
 
-        return response()->json($departments);
+        return $this->success($departments, 'Departments fetched successfully.');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreDepartmentRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'institution_id' => ['required', 'exists:institutions,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'slug' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('departments', 'slug')->where(
-                    fn ($query) => $query->where('institution_id', $request->input('institution_id'))
-                ),
-            ],
-            'status' => ['sometimes', Rule::in(['active', 'inactive'])],
-        ]);
+        $department = $this->departmentService->create($request->validated());
 
-        $department = Department::create($validated);
-
-        return response()->json($department->load(['institution', 'services']), 201);
+        return $this->success($department->load(['institution', 'services']), 'Department created successfully.', 201);
     }
 
     public function show(Department $department): JsonResponse
     {
-        return response()->json($department->load(['institution', 'services', 'users']));
+        return $this->success($department->load(['institution', 'services', 'users']), 'Department fetched successfully.');
     }
 
-    public function update(Request $request, Department $department): JsonResponse
+    public function update(UpdateDepartmentRequest $request, Department $department): JsonResponse
     {
-        $institutionId = $request->input('institution_id', $department->institution_id);
+        $updated = $this->departmentService->update($department, $request->validated());
 
-        $validated = $request->validate([
-            'institution_id' => ['sometimes', 'required', 'exists:institutions,id'],
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'slug' => [
-                'sometimes',
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('departments', 'slug')
-                    ->where(fn ($query) => $query->where('institution_id', $institutionId))
-                    ->ignore($department->id),
-            ],
-            'status' => ['sometimes', Rule::in(['active', 'inactive'])],
-        ]);
-
-        $department->update($validated);
-
-        return response()->json($department->fresh()->load(['institution', 'services']));
+        return $this->success($updated->load(['institution', 'services']), 'Department updated successfully.');
     }
 
     public function destroy(Department $department): JsonResponse
     {
-        $department->delete();
+        $this->departmentService->delete($department);
 
-        return response()->json(['message' => 'Department deleted successfully.']);
+        return $this->success(null, 'Department deleted successfully.');
     }
 }

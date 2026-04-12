@@ -2,62 +2,51 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Messaging\SendMessageRequest;
 use App\Models\Message;
+use App\Services\MessageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class MessageController extends Controller
 {
+    public function __construct(private readonly MessageService $messageService)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
-        $perPage = max(1, min(100, $request->integer('per_page', 15)));
-
         $messages = Message::query()
             ->with(['sender', 'recipient', 'appointment'])
             ->latest()
-            ->paginate($perPage);
+            ->paginate(max(1, min(100, $request->integer('per_page', 15))));
 
-        return response()->json($messages);
+        return $this->success($messages, 'Messages fetched successfully.');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(SendMessageRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'sender_id' => ['required', 'exists:users,id'],
-            'recipient_id' => ['nullable', 'exists:users,id'],
-            'appointment_id' => ['nullable', 'exists:appointments,id'],
-            'status' => ['sometimes', Rule::in(['new', 'read', 'in_progress', 'resolved', 'closed'])],
-        ]);
+        $message = $this->messageService->sendMessage($request->validated());
 
-        $message = Message::create($validated);
-
-        return response()->json($message->load(['sender', 'recipient', 'appointment']), 201);
+        return $this->success($message, 'Message sent successfully.', 201);
     }
 
     public function show(Message $message): JsonResponse
     {
-        return response()->json($message->load(['sender', 'recipient', 'appointment']));
+        return $this->success($message->load(['sender', 'recipient', 'appointment', 'conversation']), 'Message fetched successfully.');
     }
 
     public function update(Request $request, Message $message): JsonResponse
     {
-        $validated = $request->validate([
-            'sender_id' => ['sometimes', 'required', 'exists:users,id'],
-            'recipient_id' => ['sometimes', 'nullable', 'exists:users,id'],
-            'appointment_id' => ['sometimes', 'nullable', 'exists:appointments,id'],
-            'status' => ['sometimes', Rule::in(['new', 'read', 'in_progress', 'resolved', 'closed'])],
-        ]);
+        $message->update($request->only(['status', 'read_at']));
 
-        $message->update($validated);
-
-        return response()->json($message->fresh()->load(['sender', 'recipient', 'appointment']));
+        return $this->success($message->fresh()->load(['sender', 'recipient', 'appointment', 'conversation']), 'Message updated successfully.');
     }
 
     public function destroy(Message $message): JsonResponse
     {
         $message->delete();
 
-        return response()->json(['message' => 'Message deleted successfully.']);
+        return $this->success(null, 'Message deleted successfully.');
     }
 }

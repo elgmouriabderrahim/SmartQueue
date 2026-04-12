@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\User\StoreUserRequest;
+use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\User;
+use App\Services\UserManagementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    public function __construct(private readonly UserManagementService $userManagementService)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
@@ -18,31 +24,19 @@ class UserController extends Controller
             ->latest()
             ->paginate($perPage);
 
-        return response()->json($users);
+        return $this->success($users, 'Users fetched successfully.');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreUserRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
-            'phone' => ['nullable', 'string', 'max:255'],
-            'identity_number' => ['nullable', 'string', 'max:255', 'unique:users,identity_number'],
-            'role' => ['sometimes', Rule::in(['citizen', 'employee', 'manager', 'admin'])],
-            'institution_id' => ['nullable', 'exists:institutions,id'],
-            'department_id' => ['nullable', 'exists:departments,id'],
-            'status' => ['sometimes', Rule::in(['active', 'inactive', 'suspended'])],
-        ]);
+        $user = $this->userManagementService->create($request->validated());
 
-        $user = User::create($validated);
-
-        return response()->json($user->load(['institution', 'department']), 201);
+        return $this->success($user->load(['institution', 'department']), 'User created successfully.', 201);
     }
 
     public function show(User $user): JsonResponse
     {
-        return response()->json($user->load([
+        return $this->success($user->load([
             'institution',
             'department',
             'appointments',
@@ -50,42 +44,20 @@ class UserController extends Controller
             'messagesSent',
             'messagesReceived',
             'activityLogs',
-        ]));
+        ]), 'User fetched successfully.');
     }
 
-    public function update(Request $request, User $user): JsonResponse
+    public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'password' => ['sometimes', 'nullable', 'string', 'min:8'],
-            'phone' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'identity_number' => [
-                'sometimes',
-                'nullable',
-                'string',
-                'max:255',
-                Rule::unique('users', 'identity_number')->ignore($user->id),
-            ],
-            'role' => ['sometimes', Rule::in(['citizen', 'employee', 'manager', 'admin'])],
-            'institution_id' => ['sometimes', 'nullable', 'exists:institutions,id'],
-            'department_id' => ['sometimes', 'nullable', 'exists:departments,id'],
-            'status' => ['sometimes', Rule::in(['active', 'inactive', 'suspended'])],
-        ]);
+        $updated = $this->userManagementService->update($user, $request->validated());
 
-        if (array_key_exists('password', $validated) && $validated['password'] === null) {
-            unset($validated['password']);
-        }
-
-        $user->update($validated);
-
-        return response()->json($user->fresh()->load(['institution', 'department']));
+        return $this->success($updated->load(['institution', 'department']), 'User updated successfully.');
     }
 
     public function destroy(User $user): JsonResponse
     {
-        $user->delete();
+        $this->userManagementService->delete($user);
 
-        return response()->json(['message' => 'User deleted successfully.']);
+        return $this->success(null, 'User deleted successfully.');
     }
 }

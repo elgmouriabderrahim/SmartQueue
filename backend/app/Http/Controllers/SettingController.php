@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Setting\StoreSettingRequest;
+use App\Http\Requests\Setting\UpdateSettingRequest;
 use App\Models\Setting;
+use App\Services\SettingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class SettingController extends Controller
 {
+    public function __construct(private readonly SettingService $settingService)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
@@ -18,46 +24,32 @@ class SettingController extends Controller
             ->latest()
             ->paginate($perPage);
 
-        return response()->json($settings);
+        return $this->success($settings, 'Settings fetched successfully.');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreSettingRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'institution_id' => ['nullable', 'exists:institutions,id'],
-            'key' => ['required', 'string', 'max:255'],
-            'value' => ['required', 'string'],
-            'type' => ['sometimes', Rule::in(['string', 'integer', 'boolean', 'json'])],
-        ]);
+        $setting = $this->settingService->create($request->validated());
 
-        $setting = Setting::create($validated);
-
-        return response()->json($setting->load('institution'), 201);
+        return $this->success($setting->load('institution'), 'Setting created successfully.', 201);
     }
 
     public function show(Setting $setting): JsonResponse
     {
-        return response()->json($setting->load('institution'));
+        return $this->success($setting->load('institution'), 'Setting fetched successfully.');
     }
 
-    public function update(Request $request, Setting $setting): JsonResponse
+    public function update(UpdateSettingRequest $request, Setting $setting): JsonResponse
     {
-        $validated = $request->validate([
-            'institution_id' => ['sometimes', 'nullable', 'exists:institutions,id'],
-            'key' => ['sometimes', 'required', 'string', 'max:255'],
-            'value' => ['sometimes', 'required', 'string'],
-            'type' => ['sometimes', Rule::in(['string', 'integer', 'boolean', 'json'])],
-        ]);
+        $updated = $this->settingService->update($setting, $request->validated());
 
-        $setting->update($validated);
-
-        return response()->json($setting->fresh()->load('institution'));
+        return $this->success($updated->load('institution'), 'Setting updated successfully.');
     }
 
     public function destroy(Setting $setting): JsonResponse
     {
-        $setting->delete();
+        $this->settingService->delete($setting);
 
-        return response()->json(['message' => 'Setting deleted successfully.']);
+        return $this->success(null, 'Setting deleted successfully.');
     }
 }

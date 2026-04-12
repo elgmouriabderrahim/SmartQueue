@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ActivityLog\StoreActivityLogRequest;
+use App\Http\Requests\ActivityLog\UpdateActivityLogRequest;
 use App\Models\ActivityLog;
+use App\Services\ActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class ActivityLogController extends Controller
 {
+    public function __construct(private readonly ActivityLogService $activityLogService)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
@@ -18,46 +24,32 @@ class ActivityLogController extends Controller
             ->latest()
             ->paginate($perPage);
 
-        return response()->json($logs);
+        return $this->success($logs, 'Activity logs fetched successfully.');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreActivityLogRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'user_id' => ['nullable', 'exists:users,id'],
-            'institution_id' => ['nullable', 'exists:institutions,id'],
-            'action' => ['required', 'string', 'max:255'],
-            'status' => ['sometimes', Rule::in(['success', 'failed'])],
-        ]);
+        $log = $this->activityLogService->create($request->validated());
 
-        $log = ActivityLog::create($validated);
-
-        return response()->json($log->load(['user', 'institution']), 201);
+        return $this->success($log->load(['user', 'institution']), 'Activity log created successfully.', 201);
     }
 
     public function show(ActivityLog $activityLog): JsonResponse
     {
-        return response()->json($activityLog->load(['user', 'institution']));
+        return $this->success($activityLog->load(['user', 'institution']), 'Activity log fetched successfully.');
     }
 
-    public function update(Request $request, ActivityLog $activityLog): JsonResponse
+    public function update(UpdateActivityLogRequest $request, ActivityLog $activityLog): JsonResponse
     {
-        $validated = $request->validate([
-            'user_id' => ['sometimes', 'nullable', 'exists:users,id'],
-            'institution_id' => ['sometimes', 'nullable', 'exists:institutions,id'],
-            'action' => ['sometimes', 'required', 'string', 'max:255'],
-            'status' => ['sometimes', Rule::in(['success', 'failed'])],
-        ]);
+        $updated = $this->activityLogService->update($activityLog, $request->validated());
 
-        $activityLog->update($validated);
-
-        return response()->json($activityLog->fresh()->load(['user', 'institution']));
+        return $this->success($updated->load(['user', 'institution']), 'Activity log updated successfully.');
     }
 
     public function destroy(ActivityLog $activityLog): JsonResponse
     {
-        $activityLog->delete();
+        $this->activityLogService->delete($activityLog);
 
-        return response()->json(['message' => 'Activity log deleted successfully.']);
+        return $this->success(null, 'Activity log deleted successfully.');
     }
 }

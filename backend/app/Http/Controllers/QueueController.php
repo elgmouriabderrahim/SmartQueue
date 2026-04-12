@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Queue\StoreQueueRequest;
+use App\Http\Requests\Queue\UpdateQueueRequest;
 use App\Models\Queue;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class QueueController extends Controller
 {
@@ -18,46 +19,32 @@ class QueueController extends Controller
             ->latest('date')
             ->paginate($perPage);
 
-        return response()->json($queues);
+        return $this->success($queues, 'Queues fetched successfully.');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreQueueRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'service_id' => ['required', 'exists:services,id'],
-            'date' => ['required', 'date'],
-            'current_position' => ['sometimes', 'integer', 'min:0'],
-            'status' => ['sometimes', Rule::in(['active', 'paused', 'closed'])],
-        ]);
+        $queue = Queue::query()->create($request->validated());
 
-        $queue = Queue::create($validated);
-
-        return response()->json($queue->load(['service', 'entries']), 201);
+        return $this->success($queue->load(['service', 'entries']), 'Queue created successfully.', 201);
     }
 
     public function show(Queue $queue): JsonResponse
     {
-        return response()->json($queue->load(['service', 'entries.appointment', 'appointments']));
+        return $this->success($queue->load(['service', 'entries.appointment', 'appointments']), 'Queue fetched successfully.');
     }
 
-    public function update(Request $request, Queue $queue): JsonResponse
+    public function update(UpdateQueueRequest $request, Queue $queue): JsonResponse
     {
-        $validated = $request->validate([
-            'service_id' => ['sometimes', 'required', 'exists:services,id'],
-            'date' => ['sometimes', 'required', 'date'],
-            'current_position' => ['sometimes', 'integer', 'min:0'],
-            'status' => ['sometimes', Rule::in(['active', 'paused', 'closed'])],
-        ]);
+        $queue->update($request->validated());
 
-        $queue->update($validated);
-
-        return response()->json($queue->fresh()->load(['service', 'entries']));
+        return $this->success($queue->fresh()->load(['service', 'entries']), 'Queue updated successfully.');
     }
 
     public function destroy(Queue $queue): JsonResponse
     {
         $queue->delete();
 
-        return response()->json(['message' => 'Queue deleted successfully.']);
+        return $this->success(null, 'Queue deleted successfully.');
     }
 }

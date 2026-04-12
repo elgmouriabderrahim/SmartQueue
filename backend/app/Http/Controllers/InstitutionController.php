@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Institution\StoreInstitutionRequest;
+use App\Http\Requests\Institution\UpdateInstitutionRequest;
 use App\Models\Institution;
+use App\Services\InstitutionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class InstitutionController extends Controller
 {
+    public function __construct(private readonly InstitutionService $institutionService)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
@@ -18,61 +24,39 @@ class InstitutionController extends Controller
             ->latest()
             ->paginate($perPage);
 
-        return response()->json($institutions);
+        return $this->success($institutions, 'Institutions fetched successfully.');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreInstitutionRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:255', 'unique:institutions,slug'],
-            'city' => ['required', 'string', 'max:255'],
-            'region' => ['required', 'string', 'max:255'],
-            'status' => ['sometimes', Rule::in(['active', 'inactive', 'maintenance'])],
-        ]);
+        $institution = $this->institutionService->create($request->validated());
 
-        $institution = Institution::create($validated);
-
-        return response()->json($institution->load(['departments', 'services']), 201);
+        return $this->success($institution->load(['departments', 'services']), 'Institution created successfully.', 201);
     }
 
     public function show(Institution $institution): JsonResponse
     {
-        return response()->json($institution->load([
+        return $this->success($institution->load([
             'departments',
             'services',
             'users',
             'settings',
             'analytics',
             'activityLogs',
-        ]));
+        ]), 'Institution fetched successfully.');
     }
 
-    public function update(Request $request, Institution $institution): JsonResponse
+    public function update(UpdateInstitutionRequest $request, Institution $institution): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'slug' => [
-                'sometimes',
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('institutions', 'slug')->ignore($institution->id),
-            ],
-            'city' => ['sometimes', 'required', 'string', 'max:255'],
-            'region' => ['sometimes', 'required', 'string', 'max:255'],
-            'status' => ['sometimes', Rule::in(['active', 'inactive', 'maintenance'])],
-        ]);
+        $updated = $this->institutionService->update($institution, $request->validated());
 
-        $institution->update($validated);
-
-        return response()->json($institution->fresh()->load(['departments', 'services']));
+        return $this->success($updated->load(['departments', 'services']), 'Institution updated successfully.');
     }
 
     public function destroy(Institution $institution): JsonResponse
     {
-        $institution->delete();
+        $this->institutionService->delete($institution);
 
-        return response()->json(['message' => 'Institution deleted successfully.']);
+        return $this->success(null, 'Institution deleted successfully.');
     }
 }

@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Service\StoreServiceRequest;
+use App\Http\Requests\Service\UpdateServiceRequest;
 use App\Models\Service;
+use App\Services\ServiceCatalogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class ServiceController extends Controller
 {
+    public function __construct(private readonly ServiceCatalogService $serviceCatalogService)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
@@ -18,28 +24,19 @@ class ServiceController extends Controller
             ->latest()
             ->paginate($perPage);
 
-        return response()->json($services);
+        return $this->success($services, 'Services fetched successfully.');
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreServiceRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'institution_id' => ['required', 'exists:institutions,id'],
-            'department_id' => ['nullable', 'exists:departments,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'estimated_duration' => ['required', 'integer', 'min:1'],
-            'max_daily_capacity' => ['required', 'integer', 'min:1'],
-            'status' => ['sometimes', Rule::in(['active', 'inactive'])],
-        ]);
+        $service = $this->serviceCatalogService->create($request->validated());
 
-        $service = Service::create($validated);
-
-        return response()->json($service->load(['institution', 'department', 'counters']), 201);
+        return $this->success($service->load(['institution', 'department', 'counters']), 'Service created successfully.', 201);
     }
 
     public function show(Service $service): JsonResponse
     {
-        return response()->json($service->load([
+        return $this->success($service->load([
             'institution',
             'department',
             'counters',
@@ -47,29 +44,20 @@ class ServiceController extends Controller
             'appointments',
             'ratings',
             'analytics',
-        ]));
+        ]), 'Service fetched successfully.');
     }
 
-    public function update(Request $request, Service $service): JsonResponse
+    public function update(UpdateServiceRequest $request, Service $service): JsonResponse
     {
-        $validated = $request->validate([
-            'institution_id' => ['sometimes', 'required', 'exists:institutions,id'],
-            'department_id' => ['sometimes', 'nullable', 'exists:departments,id'],
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'estimated_duration' => ['sometimes', 'required', 'integer', 'min:1'],
-            'max_daily_capacity' => ['sometimes', 'required', 'integer', 'min:1'],
-            'status' => ['sometimes', Rule::in(['active', 'inactive'])],
-        ]);
+        $updated = $this->serviceCatalogService->update($service, $request->validated());
 
-        $service->update($validated);
-
-        return response()->json($service->fresh()->load(['institution', 'department', 'counters']));
+        return $this->success($updated->load(['institution', 'department', 'counters']), 'Service updated successfully.');
     }
 
     public function destroy(Service $service): JsonResponse
     {
         $service->delete();
 
-        return response()->json(['message' => 'Service deleted successfully.']);
+        return $this->success(null, 'Service deleted successfully.');
     }
 }

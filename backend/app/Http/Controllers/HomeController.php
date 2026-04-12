@@ -8,10 +8,9 @@ class HomeController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json([
+        return $this->success([
             'app' => 'SmartQueue',
-            'message' => 'Welcome to SmartQueue API.',
             'date' => now()->toDateString(),
-        ]);
+        ], 'Welcome to SmartQueue API.');
     }
 }
