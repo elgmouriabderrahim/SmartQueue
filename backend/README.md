@@ -7,6 +7,51 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## SmartQueue Backend API
+
+This backend is API-first and ready for frontend integration with:
+
+- Sanctum token authentication
+- Role-protected API routes (`admin`, `institution`, `citizen`)
+- Thin controllers + service layer architecture
+- Pest feature tests for auth, access, appointments/queue, messaging, and admin modules
+
+## Quick Start
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
+
+## Run Tests (Pest)
+
+If you use the provided Docker Postgres service:
+
+```bash
+cd ../docker
+docker compose up -d db
+
+cd ../backend
+DB_CONNECTION=pgsql \
+DB_HOST=127.0.0.1 \
+DB_PORT=5434 \
+DB_DATABASE=SmartQueue_db \
+DB_USERNAME=elgmouri \
+DB_PASSWORD=asareicola2233 \
+php artisan test
+```
+
+If you prefer SQLite in-memory tests, install the `pdo_sqlite` PHP extension and keep default `phpunit.xml` values.
+
+## API Documentation
+
+OpenAPI file:
+
+- `backend/docs/openapi.yaml`
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
