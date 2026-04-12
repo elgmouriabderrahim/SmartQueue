@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('name');
             $table->integer('estimated_duration');
             $table->integer('max_daily_capacity');
+            $table->json('working_hours')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });

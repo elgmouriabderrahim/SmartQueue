@@ -10,11 +10,16 @@ return new class extends Migration
     {
         Schema::create('messages', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('conversation_id')->nullable();
             $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('recipient_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('appointment_id')->nullable()->constrained()->nullOnDelete();
+            $table->text('body')->nullable();
             $table->enum('status', ['new', 'read', 'in_progress', 'resolved', 'closed'])->default('new');
+            $table->timestamp('read_at')->nullable();
             $table->timestamps();
+
+            $table->index('conversation_id');
         });
     }
 

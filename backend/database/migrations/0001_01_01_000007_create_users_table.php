@@ -15,6 +15,12 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->string('phone')->nullable();
+            $table->string('identity_number')->nullable()->unique();
+            $table->enum('role', ['citizen', 'employee', 'manager', 'admin'])->default('citizen');
+            $table->foreignId('institution_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('department_id')->nullable()->constrained()->nullOnDelete();
+            $table->enum('status', ['active', 'inactive', 'suspended'])->default('active');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

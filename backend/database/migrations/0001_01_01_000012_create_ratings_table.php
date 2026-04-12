@@ -14,6 +14,7 @@ return new class extends Migration
             $table->foreignId('appointment_id')->unique()->constrained()->cascadeOnDelete();
             $table->foreignId('service_id')->constrained()->cascadeOnDelete();
             $table->unsignedTinyInteger('overall_rating');
+            $table->text('comment')->nullable();
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->timestamps();
         });
