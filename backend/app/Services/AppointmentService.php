@@ -44,7 +44,7 @@ class AppointmentService
             ]);
         }
 
-        return $appointment->fresh(['service', 'queueEntry', 'queue']);
+        return $this->enrichWithQueueData($appointment->fresh(['service', 'queueEntry', 'queue']));
     }
 
     public function update(Appointment $appointment, array $data): Appointment
@@ -61,7 +61,10 @@ class AppointmentService
             $this->guardAgainstDoubleBooking((int) $newUserId, $newDate->toDateTimeString(), $appointment->id);
         }
 
-        if ($newServiceId !== $appointment->service_id || $newDate->toDateString() !== $appointment->appointment_date->toDateString()) {
+        $shouldReattachQueue = $newServiceId !== $appointment->service_id
+            || $newDate->toDateString() !== $appointment->appointment_date->toDateString();
+
+        if ($shouldReattachQueue) {
             $service = Service::query()->findOrFail((int) $newServiceId);
             $this->validateServiceAvailability($service, $newDate->toDateString(), $appointment->id);
 
@@ -74,11 +77,11 @@ class AppointmentService
         }
         $appointment->save();
 
-        if (! $appointment->queueEntry) {
+        if ($shouldReattachQueue || ! $appointment->queueEntry()->exists()) {
             $this->queueService->attachAppointmentToQueue($appointment);
         }
 
-        return $appointment->fresh(['service', 'queueEntry', 'queue']);
+        return $this->enrichWithQueueData($appointment->fresh(['service', 'queueEntry', 'queue']));
     }
 
     public function cancel(Appointment $appointment): Appointment
@@ -95,7 +98,7 @@ class AppointmentService
             ]);
         }
 
-        return $appointment->fresh();
+        return $this->enrichWithQueueData($appointment->fresh(['service', 'queueEntry', 'queue']));
     }
 
     public function complete(Appointment $appointment): Appointment
@@ -105,7 +108,7 @@ class AppointmentService
 
         $this->queueService->markAppointmentCompleted($appointment);
 
-        return $appointment->fresh(['queueEntry', 'queue']);
+        return $this->enrichWithQueueData($appointment->fresh(['service', 'queueEntry', 'queue']));
     }
 
     private function validateServiceAvailability(Service $service, string $date, ?int $ignoreAppointmentId = null): void
@@ -147,5 +150,25 @@ class AppointmentService
         } while (Appointment::query()->where('reference_code', $reference)->exists());
 
         return $reference;
+    }
+
+    private function enrichWithQueueData(Appointment $appointment): Appointment
+    {
+        $queueEntry = $appointment->queueEntry;
+        $queue = $appointment->queue;
+        $service = $appointment->service;
+
+        $appointment->setAttribute('queue_position', $queueEntry?->position);
+
+        if ($queueEntry && $queue && $service) {
+            $appointment->setAttribute(
+                'estimated_waiting_minutes',
+                $this->queueService->estimateWaitingMinutes($service, $queueEntry->position, (int) $queue->current_position)
+            );
+        } else {
+            $appointment->setAttribute('estimated_waiting_minutes', 0);
+        }
+
+        return $appointment;
     }
 }

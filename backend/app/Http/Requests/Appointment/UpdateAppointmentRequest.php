@@ -15,9 +15,10 @@ class UpdateAppointmentRequest extends FormRequest
     public function rules(): array
     {
         $appointment = $this->route('appointment');
+        $isCitizen = $this->user()?->role === 'citizen';
 
         return [
-            'user_id' => ['sometimes', 'required', 'exists:users,id'],
+            'user_id' => ['sometimes', Rule::requiredIf(! $isCitizen), 'exists:users,id'],
             'service_id' => ['sometimes', 'required', 'exists:services,id'],
             'service_counter_id' => ['sometimes', 'nullable', 'exists:service_counters,id'],
             'appointment_date' => ['sometimes', 'required', 'date'],

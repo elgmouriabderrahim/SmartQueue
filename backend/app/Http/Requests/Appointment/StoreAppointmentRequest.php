@@ -14,8 +14,10 @@ class StoreAppointmentRequest extends FormRequest
 
     public function rules(): array
     {
+        $isCitizen = $this->user()?->role === 'citizen';
+
         return [
-            'user_id' => ['required', 'exists:users,id'],
+            'user_id' => [Rule::requiredIf(! $isCitizen), 'exists:users,id'],
             'service_id' => ['required', 'exists:services,id'],
             'service_counter_id' => ['nullable', 'exists:service_counters,id'],
             'appointment_date' => ['required', 'date'],

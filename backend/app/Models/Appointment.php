@@ -26,6 +26,11 @@ class Appointment extends Model
         'appointment_date' => 'datetime',
     ];
 
+    protected $appends = [
+        'queue_position',
+        'estimated_waiting_minutes',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -60,5 +65,34 @@ class Appointment extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);
+    }
+
+    public function getQueuePositionAttribute(): ?int
+    {
+        if ($this->relationLoaded('queueEntry')) {
+            return $this->queueEntry?->position;
+        }
+
+        return $this->queueEntry()->value('position');
+    }
+
+    public function getEstimatedWaitingMinutesAttribute(): int
+    {
+        $position = $this->queue_position;
+        if (! $position) {
+            return 0;
+        }
+
+        $estimatedDuration = $this->relationLoaded('service')
+            ? (int) ($this->service?->estimated_duration ?? 0)
+            : (int) $this->service()->value('estimated_duration');
+
+        $currentPosition = $this->relationLoaded('queue')
+            ? (int) ($this->queue?->current_position ?? 0)
+            : (int) $this->queue()->value('current_position');
+
+        $remainingAhead = max(0, $position - max(1, $currentPosition + 1));
+
+        return max(0, $remainingAhead * $estimatedDuration);
     }
 }
