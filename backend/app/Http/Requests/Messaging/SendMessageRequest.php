@@ -15,7 +15,6 @@ class SendMessageRequest extends FormRequest
     {
         return [
             'conversation_id' => ['required', 'exists:conversations,id'],
-            'sender_id' => ['required', 'exists:users,id'],
             'recipient_id' => ['nullable', 'exists:users,id'],
             'appointment_id' => ['nullable', 'exists:appointments,id'],
             'body' => ['required', 'string'],

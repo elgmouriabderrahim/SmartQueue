@@ -15,7 +15,6 @@ class MarkConversationReadRequest extends FormRequest
     {
         return [
             'conversation_id' => ['required', 'exists:conversations,id'],
-            'recipient_id' => ['required', 'exists:users,id'],
         ];
     }
 }

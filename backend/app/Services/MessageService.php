@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
+use Illuminate\Validation\ValidationException;
 
 class MessageService
 {
@@ -22,14 +23,33 @@ class MessageService
         );
     }
 
-    public function sendMessage(array $data): Message
+    public function sendMessage(array $data, User $sender): Message
     {
         $conversation = Conversation::query()->findOrFail($data['conversation_id']);
 
+        if (! in_array($sender->id, [$conversation->citizen_id, $conversation->institution_user_id], true)) {
+            throw ValidationException::withMessages([
+                'conversation_id' => ['You are not part of this conversation.'],
+            ]);
+        }
+
+        $recipientId = $data['recipient_id'] ?? null;
+        if (! $recipientId) {
+            $recipientId = $sender->id === $conversation->citizen_id
+                ? $conversation->institution_user_id
+                : $conversation->citizen_id;
+        }
+
+        if (! in_array($recipientId, [$conversation->citizen_id, $conversation->institution_user_id], true) || $recipientId === $sender->id) {
+            throw ValidationException::withMessages([
+                'recipient_id' => ['Recipient must be the other participant in the conversation.'],
+            ]);
+        }
+
         $message = Message::query()->create([
             'conversation_id' => $conversation->id,
-            'sender_id' => $data['sender_id'],
-            'recipient_id' => $data['recipient_id'] ?? null,
+            'sender_id' => $sender->id,
+            'recipient_id' => $recipientId,
             'appointment_id' => $data['appointment_id'] ?? null,
             'body' => $data['body'],
             'status' => 'new',
@@ -62,6 +82,13 @@ class MessageService
 
     public function markConversationAsRead(int $conversationId, int $recipientUserId): int
     {
+        $conversation = Conversation::query()->findOrFail($conversationId);
+        if (! in_array($recipientUserId, [$conversation->citizen_id, $conversation->institution_user_id], true)) {
+            throw ValidationException::withMessages([
+                'conversation_id' => ['You are not part of this conversation.'],
+            ]);
+        }
+
         return Message::query()
             ->where('conversation_id', $conversationId)
             ->where('recipient_id', $recipientUserId)
