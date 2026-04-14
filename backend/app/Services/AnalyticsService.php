@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Appointment;
 use App\Models\PeakHour;
+use Illuminate\Support\Facades\DB;
 
 class AnalyticsService
 {
@@ -71,7 +72,7 @@ class AnalyticsService
     private function averageWaitingTime(?int $serviceId = null): float
     {
         $query = Appointment::query()
-            ->with(['queueEntry', 'service'])
+            ->with(['queueEntry', 'service', 'queue'])
             ->whereNotNull('queue_id')
             ->whereNotIn('status', ['cancelled', 'no_show']);
 
@@ -86,14 +87,23 @@ class AnalyticsService
         }
 
         $totalWait = 0;
+        $countedAppointments = 0;
+
         foreach ($appointments as $appointment) {
-            if (! $appointment->queueEntry || ! $appointment->service) {
+            if (! $appointment->queueEntry || ! $appointment->service || ! $appointment->queue) {
                 continue;
             }
-            $totalWait += max(0, ($appointment->queueEntry->position - 1) * $appointment->service->estimated_duration);
+
+            $remainingAhead = max(
+                0,
+                $appointment->queueEntry->position - max(1, ((int) $appointment->queue->current_position) + 1)
+            );
+
+            $totalWait += $remainingAhead * (int) $appointment->service->estimated_duration;
+            $countedAppointments++;
         }
 
-        return round($totalWait / max(1, $appointments->count()), 2);
+        return round($totalWait / max(1, $countedAppointments), 2);
     }
 
     private function appointmentsPerDay(?int $serviceId = null): array
@@ -101,8 +111,8 @@ class AnalyticsService
         return Appointment::query()
             ->selectRaw('DATE(appointment_date) as day, COUNT(*) as total')
             ->when($serviceId, fn ($q) => $q->where('service_id', $serviceId))
-            ->groupBy('day')
-            ->orderBy('day')
+            ->groupBy(DB::raw('DATE(appointment_date)'))
+            ->orderBy(DB::raw('DATE(appointment_date)'))
             ->get()
             ->map(fn ($row) => ['day' => $row->day, 'total' => (int) $row->total])
             ->all();
