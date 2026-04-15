@@ -1,0 +1,67 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Service extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'institution_id',
+        'department_id',
+        'name',
+        'estimated_duration',
+        'max_daily_capacity',
+        'working_hours',
+        'status',
+    ];
+
+    protected $casts = [
+        'working_hours' => 'array',
+    ];
+
+    public function institution(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class);
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function counters(): HasMany
+    {
+        return $this->hasMany(ServiceCounter::class);
+    }
+
+    public function queues(): HasMany
+    {
+        return $this->hasMany(Queue::class);
+    }
+
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
+    }
+
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(Rating::class);
+    }
+
+    public function analytics(): HasMany
+    {
+        return $this->hasMany(Analytics::class);
+    }
+
+    public function peakHours(): HasMany
+    {
+        return $this->hasMany(PeakHour::class);
+    }
+}
