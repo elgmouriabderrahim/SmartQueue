@@ -33,8 +33,8 @@ services:
     container_name: laravel_db
     environment:
       POSTGRES_DB: SmartQueue_db
-      POSTGRES_USER: elgmouri
-      POSTGRES_PASSWORD: asareicola2233
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -46,8 +46,8 @@ services:
     image: dpage/pgadmin4
     container_name: laravel_pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: asareicola2233
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     ports:
       - "5051:80"
     depends_on:
