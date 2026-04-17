@@ -14,7 +14,7 @@ class QueueService
     {
         return Queue::query()->firstOrCreate(
             ['service_id' => $serviceId, 'date' => $date],
-            ['current_position' => 0, 'status' => 'active']
+            ['current_position' => 0, 'total_count' => 0, 'status' => 'active']
         );
     }
 
@@ -31,10 +31,16 @@ class QueueService
             $appointment->queue_id = $queue->id;
             $appointment->save();
 
+            $estimatedWait = $this->estimateWaitingMinutes($appointment->service, $nextPosition, (int) $queue->current_position);
+
+            $queue->total_count = max((int) $queue->total_count, $nextPosition);
+            $queue->save();
+
             return QueueEntry::query()->create([
                 'queue_id' => $queue->id,
                 'appointment_id' => $appointment->id,
                 'position' => $nextPosition,
+                'estimated_wait_time' => $estimatedWait,
                 'status' => 'waiting',
             ]);
         });
@@ -60,12 +66,18 @@ class QueueService
                 ->orderBy('position')
                 ->each(function (QueueEntry $queueEntry): void {
                     $queueEntry->position -= 1;
+                    $serviceDuration = (int) ($queueEntry->appointment?->service?->duration ?? 0);
+                    $queueEntry->estimated_wait_time = max(0, ($queueEntry->position - 1) * $serviceDuration);
                     $queueEntry->save();
                 });
 
             $queue = Queue::query()->find($queueId);
             if ($queue && $queue->current_position >= $removedPosition) {
                 $queue->current_position = max(0, $queue->current_position - 1);
+            }
+
+            if ($queue) {
+                $queue->total_count = (int) QueueEntry::query()->where('queue_id', $queueId)->count();
                 $queue->save();
             }
 
@@ -98,6 +110,6 @@ class QueueService
     {
         $remainingAhead = max(0, $position - max(1, $currentPosition + 1));
 
-        return max(0, $remainingAhead * $service->estimated_duration);
+        return max(0, $remainingAhead * $service->duration);
     }
 }

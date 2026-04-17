@@ -8,30 +8,13 @@ class ServiceCatalogService
 {
     public function create(array $data): Service
     {
-        $normalized = $this->normalizeData($data);
-
-        return Service::query()->create($normalized);
+        return Service::query()->create($data);
     }
 
     public function update(Service $service, array $data): Service
     {
-        $service->update($this->normalizeData($data));
+        $service->update($data);
 
         return $service->fresh();
-    }
-
-    private function normalizeData(array $data): array
-    {
-        if (isset($data['duration'])) {
-            $data['estimated_duration'] = $data['duration'];
-            unset($data['duration']);
-        }
-
-        if (isset($data['capacity'])) {
-            $data['max_daily_capacity'] = $data['capacity'];
-            unset($data['capacity']);
-        }
-
-        return $data;
     }
 }

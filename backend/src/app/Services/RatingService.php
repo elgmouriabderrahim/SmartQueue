@@ -8,8 +8,6 @@ class RatingService
 {
     public function create(array $data): Rating
     {
-        $data['status'] = $data['status'] ?? 'pending';
-
         return Rating::query()->create($data);
     }
 

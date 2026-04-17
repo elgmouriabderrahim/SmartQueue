@@ -32,11 +32,7 @@ class MessageController extends Controller
             ->with(['sender', 'recipient', 'appointment'])
             ->where(function ($query) use ($user): void {
                 $query->where('sender_id', $user->id)
-                    ->orWhere('recipient_id', $user->id)
-                    ->orWhereHas('conversation', function ($conversationQuery) use ($user): void {
-                        $conversationQuery->where('citizen_id', $user->id)
-                            ->orWhere('institution_user_id', $user->id);
-                    });
+                    ->orWhere('recipient_id', $user->id);
             })
             ->latest()
             ->paginate(max(1, min(100, $request->integer('per_page', 15))));
@@ -51,11 +47,10 @@ class MessageController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['conversation_id', 'body'],
+                required: ['recipient_id', 'content'],
                 properties: [
-                    new OA\Property(property: 'conversation_id', type: 'integer', example: 1),
-                    new OA\Property(property: 'recipient_id', type: 'integer', nullable: true, example: 2),
-                    new OA\Property(property: 'body', type: 'string', example: 'Hello, I need support.'),
+                    new OA\Property(property: 'recipient_id', type: 'integer', example: 2),
+                    new OA\Property(property: 'content', type: 'string', example: 'Hello, I need support.'),
                 ]
             )
         ),
@@ -86,7 +81,7 @@ class MessageController extends Controller
             return $this->error('Forbidden.', 403);
         }
 
-        return $this->success($message->load(['sender', 'recipient', 'appointment', 'conversation']), 'Message fetched successfully.');
+        return $this->success($message->load(['sender', 'recipient', 'appointment']), 'Message fetched successfully.');
     }
 
     public function update(Request $request, Message $message): JsonResponse
@@ -95,9 +90,9 @@ class MessageController extends Controller
             return $this->error('Forbidden.', 403);
         }
 
-        $message->update($request->only(['status', 'read_at']));
+        $message->update($request->only(['status']));
 
-        return $this->success($message->fresh()->load(['sender', 'recipient', 'appointment', 'conversation']), 'Message updated successfully.');
+        return $this->success($message->fresh()->load(['sender', 'recipient', 'appointment']), 'Message updated successfully.');
     }
 
     public function destroy(Message $message): JsonResponse
@@ -122,10 +117,6 @@ class MessageController extends Controller
             return true;
         }
 
-        if (! $message->conversation) {
-            return false;
-        }
-
-        return in_array($user->id, [$message->conversation->citizen_id, $message->conversation->institution_user_id], true);
+        return false;
     }
 }

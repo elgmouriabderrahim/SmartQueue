@@ -31,7 +31,7 @@ class NotificationController extends Controller
             return $this->error('Unauthenticated.', 401);
         }
 
-        $updated = $this->notificationService->markAsRead($notificationId, $user);
+        $updated = $this->notificationService->markAsRead((int) $notificationId, $user);
 
         if (! $updated) {
             return $this->error('Notification not found.', 404);

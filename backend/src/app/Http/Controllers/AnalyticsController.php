@@ -25,8 +25,8 @@ class AnalyticsController extends Controller
 
     public function sync(SyncAnalyticsRequest $request): JsonResponse
     {
-        $this->analyticsService->syncPeakHoursForDate($request->string('date')->toString());
+        $this->analyticsService->syncForDate($request->string('date')->toString());
 
-        return $this->success(null, 'Peak hours synced successfully.');
+        return $this->success(null, 'Analytics synced successfully.');
     }
 }

@@ -4,7 +4,6 @@ use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\HomeController;
@@ -59,11 +58,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
 	Route::put('appointments/{appointment}', [AppointmentController::class, 'update']);
 	Route::delete('appointments/{appointment}', [AppointmentController::class, 'destroy']);
 	Route::patch('appointments/{appointment}/complete', [AppointmentController::class, 'complete'])->middleware('role:admin,institution');
-
-	Route::get('conversations', [ConversationController::class, 'index']);
-	Route::post('conversations', [ConversationController::class, 'store']);
-	Route::get('conversations/{conversation}', [ConversationController::class, 'show']);
-	Route::post('conversations/read', [ConversationController::class, 'markRead']);
 
 	Route::apiResource('messages', MessageController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
 

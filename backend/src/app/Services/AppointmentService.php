@@ -37,7 +37,9 @@ class AppointmentService
 
         $user = User::query()->find($appointment->user_id);
         if ($user) {
-            $this->notificationService->createForUser($user, 'appointment.confirmation', [
+            $this->notificationService->createForUser($user, 'appointment_reminder', [
+                'title' => 'Appointment confirmed',
+                'message' => 'Your appointment has been confirmed.',
                 'appointment_id' => $appointment->id,
                 'reference_code' => $appointment->reference_code,
                 'queue_position' => $queueEntry->position,
@@ -93,7 +95,9 @@ class AppointmentService
 
         $user = User::query()->find($appointment->user_id);
         if ($user) {
-            $this->notificationService->createForUser($user, 'appointment.cancelled', [
+            $this->notificationService->createForUser($user, 'queue_status', [
+                'title' => 'Appointment cancelled',
+                'message' => 'Your appointment has been cancelled.',
                 'appointment_id' => $appointment->id,
             ]);
         }
@@ -117,10 +121,10 @@ class AppointmentService
             ->where('service_id', $service->id)
             ->whereDate('appointment_date', $date)
             ->when($ignoreAppointmentId, fn ($q) => $q->where('id', '!=', $ignoreAppointmentId))
-            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->where('status', '!=', 'cancelled')
             ->count();
 
-        if ($appointmentsCount >= $service->max_daily_capacity) {
+        if ($appointmentsCount >= $service->capacity) {
             throw ValidationException::withMessages([
                 'appointment_date' => ['No availability for this service on the selected date.'],
             ]);
@@ -132,7 +136,7 @@ class AppointmentService
         $exists = Appointment::query()
             ->where('user_id', $userId)
             ->where('appointment_date', $appointmentDateTime)
-            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->where('status', '!=', 'cancelled')
             ->when($ignoreAppointmentId, fn ($q) => $q->where('id', '!=', $ignoreAppointmentId))
             ->exists();
 
