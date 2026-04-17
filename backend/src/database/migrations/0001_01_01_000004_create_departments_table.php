@@ -13,6 +13,8 @@ return new class extends Migration
             $table->foreignId('institution_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('slug');
+            $table->text('description');
+            $table->string('location');
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
 

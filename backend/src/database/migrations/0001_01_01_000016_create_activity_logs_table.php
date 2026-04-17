@@ -13,7 +13,6 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('institution_id')->nullable()->constrained()->nullOnDelete();
             $table->string('action');
-            $table->enum('status', ['success', 'failed'])->default('success');
             $table->timestamps();
         });
     }

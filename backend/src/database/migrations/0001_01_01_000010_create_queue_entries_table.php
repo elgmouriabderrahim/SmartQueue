@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('queue_id')->constrained()->cascadeOnDelete();
             $table->foreignId('appointment_id')->unique()->constrained()->cascadeOnDelete();
             $table->integer('position');
+            $table->unsignedInteger('estimated_wait_time')->default(0);
             $table->enum('status', ['waiting', 'called', 'serving', 'served', 'skipped', 'transferred'])->default('waiting');
             $table->timestamps();
 

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('service_counter_id')->nullable()->constrained('service_counters')->nullOnDelete();
             $table->string('reference_code')->unique();
             $table->dateTime('appointment_date');
-            $table->enum('status', ['pending', 'confirmed', 'in_progress', 'completed', 'no_show', 'cancelled'])->default('pending');
+            $table->enum('status', ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled'])->default('pending');
             $table->timestamps();
         });
     }

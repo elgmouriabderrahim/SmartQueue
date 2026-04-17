@@ -12,8 +12,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('institution_id')->nullable()->constrained()->nullOnDelete();
             $table->string('key');
-            $table->longText('value');
+            $table->text('value');
             $table->enum('type', ['string', 'integer', 'boolean', 'json'])->default('string');
+            $table->text('description')->nullable();
             $table->timestamps();
 
             $table->unique(['institution_id', 'key']);

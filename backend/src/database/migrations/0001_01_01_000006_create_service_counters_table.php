@@ -11,7 +11,8 @@ return new class extends Migration
         Schema::create('service_counters', function (Blueprint $table) {
             $table->id();
             $table->foreignId('service_id')->constrained()->cascadeOnDelete();
-            $table->string('counter_number');
+            $table->unsignedInteger('counter_number');
+            $table->string('name');
             $table->enum('status', ['available', 'busy', 'offline'])->default('available');
             $table->timestamps();
 
