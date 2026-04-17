@@ -7,7 +7,6 @@ use App\Models\User;
 it('returns analytics dashboard metrics for authenticated admin', function () {
     $admin = User::factory()->create([
         'role' => 'admin',
-        'status' => 'active',
     ]);
 
     $token = $admin->createToken('test')->plainTextToken;
@@ -21,40 +20,48 @@ it('returns analytics dashboard metrics for authenticated admin', function () {
             'success',
             'message',
             'data' => [
-                'average_waiting_time_minutes',
-                'appointments_per_day',
-                'cancellation_rate_percent',
-                'peak_usage',
+                'total_appointments',
+                'completed_appointments',
+                'cancelled_appointments',
+                'total_visitors',
+                'average_rating',
+                'average_wait_time',
             ],
         ]);
 });
 
-it('syncs peak hours for a date as admin', function () {
+it('syncs analytics for a date as admin', function () {
     $admin = User::factory()->create([
         'role' => 'admin',
-        'status' => 'active',
     ]);
 
     $institution = Institution::query()->create([
         'name' => 'Inst Analytics',
         'slug' => 'inst-analytics',
         'city' => 'Rabat',
-        'region' => 'Rabat-Sale-Kenitra',
+        'adress' => 'Center street',
+        'description' => 'Public office',
+        'opening_time' => '08:00',
+        'closing_time' => '16:00',
+        'working_days' => ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+        'max_appointments_per_day' => 100,
         'status' => 'active',
     ]);
 
     $service = Service::query()->create([
         'institution_id' => $institution->id,
         'name' => 'ID Card',
-        'estimated_duration' => 15,
-        'max_daily_capacity' => 25,
-        'working_hours' => ['start' => '08:30', 'end' => '16:30'],
+        'description' => 'ID card service',
+        'duration' => 15,
+        'capacity' => 25,
+        'opening_time' => '08:30',
+        'closing_time' => '16:30',
+        'working_days' => ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
         'status' => 'active',
     ]);
 
     $citizen = User::factory()->create([
         'role' => 'citizen',
-        'status' => 'active',
     ]);
 
     $citizenToken = $citizen->createToken('test')->plainTextToken;

@@ -1,40 +1,31 @@
 <?php
 
-use App\Models\Conversation;
 use App\Models\User;
 
-it('starts conversation, sends messages, and marks them read', function () {
-    $citizen = User::factory()->create(['role' => 'citizen', 'status' => 'active']);
-    $institutionUser = User::factory()->create(['role' => 'manager', 'status' => 'active']);
+it('sends messages between users and marks them read', function () {
+    $citizen = User::factory()->create(['role' => 'citizen']);
+    $institutionUser = User::factory()->create(['role' => 'manager']);
 
     $citizenToken = $citizen->createToken('test')->plainTextToken;
-    $institutionToken = $institutionUser->createToken('test')->plainTextToken;
-
-    $start = $this->withHeader('Authorization', 'Bearer '.$citizenToken)
-        ->postJson('/api/conversations', [
-            'institution_user_id' => $institutionUser->id,
-            'subject' => 'Appointment inquiry',
-        ]);
-
-    $start->assertCreated()->assertJsonPath('success', true);
-    $conversationId = $start->json('data.id');
 
     $send = $this->withHeader('Authorization', 'Bearer '.$citizenToken)
         ->postJson('/api/messages', [
-            'conversation_id' => $conversationId,
-            'body' => 'Hello, I need help with my appointment.',
+            'recipient_id' => $institutionUser->id,
+            'content' => 'Hello, I need help with my appointment.',
         ]);
 
     $send->assertCreated()->assertJsonPath('success', true);
     $send->assertJsonPath('data.sender_id', $citizen->id);
     $send->assertJsonPath('data.recipient_id', $institutionUser->id);
 
+    $messageId = $send->json('data.id');
+
+    $institutionToken = $institutionUser->createToken('test')->plainTextToken;
     $markRead = $this->withHeader('Authorization', 'Bearer '.$institutionToken)
-        ->postJson('/api/conversations/read', [
-            'conversation_id' => $conversationId,
+        ->putJson('/api/messages/'.$messageId, [
+            'status' => 'read',
         ]);
 
     $markRead->assertOk()->assertJsonPath('success', true);
-    $markRead->assertJsonPath('data.updated_count', 1);
-    expect(Conversation::query()->count())->toBe(1);
+    $markRead->assertJsonPath('data.status', 'read');
 });
