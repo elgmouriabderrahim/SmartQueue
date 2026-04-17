@@ -17,7 +17,7 @@ class StoreRatingRequest extends FormRequest
             'user_id' => ['required', 'exists:users,id'],
             'appointment_id' => ['required', 'exists:appointments,id', 'unique:ratings,appointment_id'],
             'service_id' => ['required', 'exists:services,id'],
-            'overall_rating' => ['required', 'integer', 'between:1,5'],
+            'score' => ['required', 'integer', 'between:1,5'],
             'comment' => ['nullable', 'string'],
         ];
     }

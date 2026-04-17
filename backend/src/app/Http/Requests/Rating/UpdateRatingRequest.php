@@ -27,9 +27,8 @@ class UpdateRatingRequest extends FormRequest
                 Rule::unique('ratings', 'appointment_id')->ignore($rating?->id),
             ],
             'service_id' => ['sometimes', 'required', 'exists:services,id'],
-            'overall_rating' => ['sometimes', 'required', 'integer', 'between:1,5'],
+            'score' => ['sometimes', 'required', 'integer', 'between:1,5'],
             'comment' => ['sometimes', 'nullable', 'string'],
-            'status' => ['sometimes', Rule::in(['pending', 'approved', 'rejected'])],
         ];
     }
 }

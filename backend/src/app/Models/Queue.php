@@ -15,6 +15,7 @@ class Queue extends Model
         'service_id',
         'date',
         'current_position',
+        'total_count',
         'status',
     ];
 

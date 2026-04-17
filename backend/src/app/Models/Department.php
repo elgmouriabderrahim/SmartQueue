@@ -15,6 +15,8 @@ class Department extends Model
         'institution_id',
         'name',
         'slug',
+        'description',
+        'location',
         'status',
     ];
 

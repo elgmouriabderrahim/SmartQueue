@@ -25,6 +25,7 @@ class StoreQueueEntryRequest extends FormRequest
                     fn ($query) => $query->where('queue_id', $this->input('queue_id'))
                 ),
             ],
+            'estimated_wait_time' => ['sometimes', 'integer', 'min:0'],
             'status' => ['sometimes', Rule::in(['waiting', 'called', 'serving', 'served', 'skipped', 'transferred'])],
         ];
     }

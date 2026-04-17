@@ -14,8 +14,17 @@ class Institution extends Model
         'name',
         'slug',
         'city',
-        'region',
+        'adress',
+        'description',
+        'opening_time',
+        'closing_time',
+        'working_days',
+        'max_appointments_per_day',
         'status',
+    ];
+
+    protected $casts = [
+        'working_days' => 'array',
     ];
 
     public function departments(): HasMany

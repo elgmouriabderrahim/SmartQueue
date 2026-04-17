@@ -13,13 +13,16 @@ class Analytics extends Model
     protected $fillable = [
         'institution_id',
         'service_id',
-        'date',
         'total_appointments',
+        'completed_appointments',
+        'cancelled_appointments',
+        'total_visitors',
+        'average_rating',
         'average_wait_time',
     ];
 
     protected $casts = [
-        'date' => 'date',
+        'average_rating' => 'decimal:2',
         'average_wait_time' => 'decimal:2',
     ];
 

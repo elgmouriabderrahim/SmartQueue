@@ -18,6 +18,7 @@ class UpdateQueueRequest extends FormRequest
             'service_id' => ['sometimes', 'required', 'exists:services,id'],
             'date' => ['sometimes', 'required', 'date'],
             'current_position' => ['sometimes', 'integer', 'min:0'],
+            'total_count' => ['sometimes', 'integer', 'min:0'],
             'status' => ['sometimes', Rule::in(['active', 'paused', 'closed'])],
         ];
     }

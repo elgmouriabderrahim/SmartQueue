@@ -25,6 +25,8 @@ class StoreDepartmentRequest extends FormRequest
                     fn ($query) => $query->where('institution_id', $this->input('institution_id'))
                 ),
             ],
+            'description' => ['required', 'string'],
+            'location' => ['required', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
         ];
     }

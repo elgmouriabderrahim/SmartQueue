@@ -18,9 +18,12 @@ class StoreServiceRequest extends FormRequest
             'institution_id' => ['required', 'exists:institutions,id'],
             'department_id' => ['nullable', 'exists:departments,id'],
             'name' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string'],
             'duration' => ['required', 'integer', 'min:1'],
             'capacity' => ['required', 'integer', 'min:1'],
-            'working_hours' => ['nullable', 'array'],
+            'opening_time' => ['required', 'date_format:H:i'],
+            'closing_time' => ['required', 'date_format:H:i'],
+            'working_days' => ['required', 'array'],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
         ];
     }

@@ -15,6 +15,7 @@ class Setting extends Model
         'key',
         'value',
         'type',
+        'description',
     ];
 
     public function institution(): BelongsTo

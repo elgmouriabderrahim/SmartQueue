@@ -18,9 +18,12 @@ class UpdateServiceRequest extends FormRequest
             'institution_id' => ['sometimes', 'required', 'exists:institutions,id'],
             'department_id' => ['sometimes', 'nullable', 'exists:departments,id'],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'description' => ['sometimes', 'required', 'string'],
             'duration' => ['sometimes', 'required', 'integer', 'min:1'],
             'capacity' => ['sometimes', 'required', 'integer', 'min:1'],
-            'working_hours' => ['sometimes', 'nullable', 'array'],
+            'opening_time' => ['sometimes', 'required', 'date_format:H:i'],
+            'closing_time' => ['sometimes', 'required', 'date_format:H:i'],
+            'working_days' => ['sometimes', 'required', 'array'],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
         ];
     }

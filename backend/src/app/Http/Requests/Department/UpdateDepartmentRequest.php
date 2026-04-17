@@ -31,6 +31,8 @@ class UpdateDepartmentRequest extends FormRequest
                     ->where(fn ($query) => $query->where('institution_id', $institutionId))
                     ->ignore($department?->id),
             ],
+            'description' => ['sometimes', 'required', 'string'],
+            'location' => ['sometimes', 'required', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
         ];
     }

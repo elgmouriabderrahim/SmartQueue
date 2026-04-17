@@ -18,12 +18,13 @@ class StoreServiceCounterRequest extends FormRequest
             'service_id' => ['required', 'exists:services,id'],
             'counter_number' => [
                 'required',
-                'string',
-                'max:255',
+                'integer',
+                'min:1',
                 Rule::unique('service_counters', 'counter_number')->where(
                     fn ($query) => $query->where('service_id', $this->input('service_id'))
                 ),
             ],
+            'name' => ['required', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in(['available', 'busy', 'offline'])],
         ];
     }

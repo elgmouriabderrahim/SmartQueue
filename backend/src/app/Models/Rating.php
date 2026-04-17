@@ -14,9 +14,8 @@ class Rating extends Model
         'user_id',
         'appointment_id',
         'service_id',
-        'overall_rating',
+        'score',
         'comment',
-        'status',
     ];
 
     public function user(): BelongsTo

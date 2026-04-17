@@ -19,6 +19,7 @@ class StoreSettingRequest extends FormRequest
             'key' => ['required', 'string', 'max:255'],
             'value' => ['required', 'string'],
             'type' => ['sometimes', Rule::in(['string', 'integer', 'boolean', 'json'])],
+            'description' => ['nullable', 'string'],
         ];
     }
 }

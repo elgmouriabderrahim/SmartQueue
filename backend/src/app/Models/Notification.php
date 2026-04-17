@@ -6,23 +6,24 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class PeakHour extends Model
+class Notification extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'service_id',
-        'date',
-        'hour',
-        'appointments_count',
+        'user_id',
+        'title',
+        'message',
+        'type',
+        'is_read',
     ];
 
     protected $casts = [
-        'date' => 'date',
+        'is_read' => 'boolean',
     ];
 
-    public function service(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(User::class);
     }
 }

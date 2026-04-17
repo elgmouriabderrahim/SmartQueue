@@ -14,10 +14,9 @@ class SendMessageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'conversation_id' => ['required', 'exists:conversations,id'],
-            'recipient_id' => ['nullable', 'exists:users,id'],
+            'recipient_id' => ['required', 'exists:users,id'],
             'appointment_id' => ['nullable', 'exists:appointments,id'],
-            'body' => ['required', 'string'],
+            'content' => ['required', 'string'],
         ];
     }
 }
