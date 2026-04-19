@@ -153,6 +153,24 @@ class AppointmentController extends Controller
         return $this->success($completed, 'Appointment completed successfully.');
     }
 
+    public function queuePosition(Request $request, Appointment $appointment): JsonResponse
+    {
+        if ($response = $this->denyIfCitizenNotOwner($request, $appointment)) {
+            return $response;
+        }
+
+        $appointment->load(['queue', 'queueEntry', 'service']);
+
+        return $this->success([
+            'appointment_id' => $appointment->id,
+            'status' => $appointment->status,
+            'queue_id' => $appointment->queue_id,
+            'queue_current_position' => $appointment->queue?->current_position,
+            'queue_position' => $appointment->queue_position,
+            'estimated_waiting_minutes' => $appointment->estimated_waiting_minutes,
+        ], 'Appointment queue position fetched successfully.');
+    }
+
     private function denyIfCitizenNotOwner(Request $request, Appointment $appointment): ?JsonResponse
     {
         $user = $request->user();

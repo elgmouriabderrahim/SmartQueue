@@ -27,6 +27,17 @@ class InstitutionController extends Controller
         return $this->success($institutions, 'Institutions fetched successfully.');
     }
 
+    public function map(Request $request): JsonResponse
+    {
+        $institutions = Institution::query()
+            ->select(['id', 'name', 'slug', 'city', 'adress', 'status', 'opening_time', 'closing_time'])
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')->toString()))
+            ->orderBy('name')
+            ->get();
+
+        return $this->success($institutions, 'Institutions map data fetched successfully.');
+    }
+
     public function store(StoreInstitutionRequest $request): JsonResponse
     {
         $institution = $this->institutionService->create($request->validated());
@@ -58,5 +69,17 @@ class InstitutionController extends Controller
         $this->institutionService->delete($institution);
 
         return $this->success(null, 'Institution deleted successfully.');
+    }
+
+    public function approve(Institution $institution): JsonResponse
+    {
+        if ($institution->status === 'active') {
+            return $this->success($institution, 'Institution is already active.');
+        }
+
+        $institution->status = 'active';
+        $institution->save();
+
+        return $this->success($institution->fresh(), 'Institution approved successfully.');
     }
 }
