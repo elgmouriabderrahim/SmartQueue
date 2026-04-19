@@ -23,9 +23,10 @@ class AuthController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['name', 'email', 'password', 'password_confirmation'],
+                required: ['first_name', 'last_name', 'email', 'password', 'password_confirmation'],
                 properties: [
-                    new OA\Property(property: 'name', type: 'string', example: 'Citizen One'),
+                    new OA\Property(property: 'first_name', type: 'string', example: 'Citizen'),
+                    new OA\Property(property: 'last_name', type: 'string', example: 'One'),
                     new OA\Property(property: 'email', type: 'string', example: 'citizen@example.com'),
                     new OA\Property(property: 'password', type: 'string', example: 'password123'),
                     new OA\Property(property: 'password_confirmation', type: 'string', example: 'password123'),

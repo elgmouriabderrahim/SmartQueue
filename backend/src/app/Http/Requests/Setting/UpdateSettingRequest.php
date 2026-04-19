@@ -19,6 +19,7 @@ class UpdateSettingRequest extends FormRequest
             'key' => ['sometimes', 'required', 'string', 'max:255'],
             'value' => ['sometimes', 'required', 'string'],
             'type' => ['sometimes', Rule::in(['string', 'integer', 'boolean', 'json'])],
+            'description' => ['sometimes', 'nullable', 'string'],
         ];
     }
 }

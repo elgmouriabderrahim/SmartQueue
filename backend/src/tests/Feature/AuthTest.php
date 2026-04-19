@@ -4,7 +4,8 @@ use App\Models\User;
 
 it('registers a new user and returns token', function () {
     $response = $this->postJson('/api/auth/register', [
-        'name' => 'Citizen One',
+        'first_name' => 'Citizen',
+        'last_name' => 'One',
         'email' => 'citizen@example.com',
         'password' => 'password123',
         'password_confirmation' => 'password123',
@@ -27,7 +28,6 @@ it('logs in and logs out with sanctum token', function () {
         'email' => 'admin@example.com',
         'password' => bcrypt('password123'),
         'role' => 'admin',
-        'status' => 'active',
     ]);
 
     $login = $this->postJson('/api/auth/login', [

@@ -18,6 +18,7 @@ class StoreQueueRequest extends FormRequest
             'service_id' => ['required', 'exists:services,id'],
             'date' => ['required', 'date'],
             'current_position' => ['sometimes', 'integer', 'min:0'],
+            'total_count' => ['sometimes', 'integer', 'min:0'],
             'status' => ['sometimes', Rule::in(['active', 'paused', 'closed'])],
         ];
     }

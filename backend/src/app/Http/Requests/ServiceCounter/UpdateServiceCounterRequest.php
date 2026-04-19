@@ -24,12 +24,13 @@ class UpdateServiceCounterRequest extends FormRequest
             'counter_number' => [
                 'sometimes',
                 'required',
-                'string',
-                'max:255',
+                'integer',
+                'min:1',
                 Rule::unique('service_counters', 'counter_number')
                     ->where(fn ($query) => $query->where('service_id', $serviceId))
                     ->ignore($serviceCounter?->id),
             ],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in(['available', 'busy', 'offline'])],
         ];
     }

@@ -13,7 +13,12 @@ return new class extends Migration
             $table->string('name');
             $table->string('slug')->unique();
             $table->string('city');
-            $table->string('region');
+            $table->string('adress');
+            $table->text('description');
+            $table->time('opening_time');
+            $table->time('closing_time');
+            $table->json('working_days');
+            $table->unsignedInteger('max_appointments_per_day')->default(0);
             $table->enum('status', ['active', 'inactive', 'maintenance'])->default('active');
             $table->timestamps();
         });

@@ -36,6 +36,7 @@ class UpdateQueueEntryRequest extends FormRequest
                     ->where(fn ($query) => $query->where('queue_id', $queueId))
                     ->ignore($queueEntry?->id),
             ],
+            'estimated_wait_time' => ['sometimes', 'integer', 'min:0'],
             'status' => ['sometimes', Rule::in(['waiting', 'called', 'serving', 'served', 'skipped', 'transferred'])],
         ];
     }

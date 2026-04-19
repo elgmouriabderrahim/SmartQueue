@@ -11,7 +11,6 @@ it('blocks dashboard for unauthenticated users', function () {
 it('allows admin dashboard access', function () {
     $admin = User::factory()->create([
         'role' => 'admin',
-        'status' => 'active',
     ]);
 
     $token = $admin->createToken('test')->plainTextToken;

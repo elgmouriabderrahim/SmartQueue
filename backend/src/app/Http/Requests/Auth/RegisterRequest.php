@@ -15,15 +15,14 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'phone' => ['nullable', 'string', 'max:255'],
             'identity_number' => ['nullable', 'string', 'max:255', 'unique:users,identity_number'],
             'role' => ['sometimes', Rule::in(['citizen', 'institution', 'admin'])],
             'institution_id' => ['nullable', 'exists:institutions,id'],
             'department_id' => ['nullable', 'exists:departments,id'],
-            'status' => ['sometimes', Rule::in(['active', 'inactive', 'suspended'])],
         ];
     }
 }

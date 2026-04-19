@@ -14,15 +14,14 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
         'email',
         'password',
-        'phone',
         'identity_number',
         'role',
         'institution_id',
         'department_id',
-        'status',
     ];
 
     protected $hidden = [
@@ -77,6 +76,11 @@ class User extends Authenticatable
         return $this->hasMany(ActivityLog::class);
     }
 
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+
     public function getApiRoleAttribute(): string
     {
         return in_array($this->role, ['manager', 'employee'], true)
@@ -84,13 +88,4 @@ class User extends Authenticatable
             : $this->role;
     }
 
-    public function citizenConversations(): HasMany
-    {
-        return $this->hasMany(Conversation::class, 'citizen_id');
-    }
-
-    public function institutionConversations(): HasMany
-    {
-        return $this->hasMany(Conversation::class, 'institution_user_id');
-    }
 }

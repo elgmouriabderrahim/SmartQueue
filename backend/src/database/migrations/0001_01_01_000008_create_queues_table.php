@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('service_id')->constrained()->cascadeOnDelete();
             $table->date('date');
             $table->integer('current_position')->default(0);
+            $table->unsignedInteger('total_count')->default(0);
             $table->enum('status', ['active', 'paused', 'closed'])->default('active');
             $table->timestamps();
 

@@ -14,6 +14,7 @@ class ServiceCounter extends Model
     protected $fillable = [
         'service_id',
         'counter_number',
+        'name',
         'status',
     ];
 

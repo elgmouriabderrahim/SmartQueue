@@ -2,37 +2,34 @@
 
 namespace App\Services;
 
+use App\Models\Notification;
 use App\Models\User;
-use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationService
 {
-    public function createForUser(User $user, string $type, array $data): DatabaseNotification
+    public function createForUser(User $user, string $type, array $data): Notification
     {
-        return DatabaseNotification::query()->create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+        return Notification::query()->create([
+            'user_id' => $user->id,
+            'title' => (string) ($data['title'] ?? ucfirst(str_replace('_', ' ', str_replace('.', ' ', $type)))),
+            'message' => (string) ($data['message'] ?? 'You have a new notification.'),
             'type' => $type,
-            'notifiable_type' => User::class,
-            'notifiable_id' => $user->id,
-            'data' => $data,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'is_read' => false,
         ]);
     }
 
-    public function markAsRead(string $notificationId, User $user): bool
+    public function markAsRead(int $notificationId, User $user): bool
     {
-        $notification = DatabaseNotification::query()
+        $notification = Notification::query()
             ->where('id', $notificationId)
-            ->where('notifiable_type', User::class)
-            ->where('notifiable_id', $user->id)
+            ->where('user_id', $user->id)
             ->first();
 
         if (! $notification) {
             return false;
         }
 
-        $notification->read_at = now();
+        $notification->is_read = true;
         $notification->save();
 
         return true;

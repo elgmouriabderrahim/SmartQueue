@@ -84,8 +84,8 @@ class Appointment extends Model
         }
 
         $estimatedDuration = $this->relationLoaded('service')
-            ? (int) ($this->service?->estimated_duration ?? 0)
-            : (int) $this->service()->value('estimated_duration');
+            ? (int) ($this->service?->duration ?? 0)
+            : (int) $this->service()->value('duration');
 
         $currentPosition = $this->relationLoaded('queue')
             ? (int) ($this->queue?->current_position ?? 0)

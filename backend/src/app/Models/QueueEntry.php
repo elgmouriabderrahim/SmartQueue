@@ -14,6 +14,7 @@ class QueueEntry extends Model
         'queue_id',
         'appointment_id',
         'position',
+        'estimated_wait_time',
         'status',
     ];
 

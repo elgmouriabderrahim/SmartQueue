@@ -4,7 +4,6 @@ use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\HomeController;
@@ -29,6 +28,7 @@ Route::prefix('auth')->group(function (): void {
 });
 
 Route::get('institutions', [InstitutionController::class, 'index']);
+Route::get('institutions/map', [InstitutionController::class, 'map']);
 Route::get('institutions/{institution}', [InstitutionController::class, 'show']);
 Route::get('services', [ServiceController::class, 'index']);
 Route::get('services/{service}', [ServiceController::class, 'show']);
@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 	Route::post('institutions', [InstitutionController::class, 'store'])->middleware('role:admin');
 	Route::put('institutions/{institution}', [InstitutionController::class, 'update'])->middleware('role:admin');
 	Route::delete('institutions/{institution}', [InstitutionController::class, 'destroy'])->middleware('role:admin');
+	Route::patch('institutions/{institution}/approve', [InstitutionController::class, 'approve'])->middleware('role:admin');
 
 	Route::post('services', [ServiceController::class, 'store'])->middleware('role:admin,institution');
 	Route::put('services/{service}', [ServiceController::class, 'update'])->middleware('role:admin,institution');
@@ -59,11 +60,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 	Route::put('appointments/{appointment}', [AppointmentController::class, 'update']);
 	Route::delete('appointments/{appointment}', [AppointmentController::class, 'destroy']);
 	Route::patch('appointments/{appointment}/complete', [AppointmentController::class, 'complete'])->middleware('role:admin,institution');
-
-	Route::get('conversations', [ConversationController::class, 'index']);
-	Route::post('conversations', [ConversationController::class, 'store']);
-	Route::get('conversations/{conversation}', [ConversationController::class, 'show']);
-	Route::post('conversations/read', [ConversationController::class, 'markRead']);
+	Route::get('appointments/{appointment}/queue-position', [AppointmentController::class, 'queuePosition']);
 
 	Route::apiResource('messages', MessageController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
 

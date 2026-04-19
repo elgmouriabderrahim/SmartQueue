@@ -22,7 +22,7 @@ class StoreAppointmentRequest extends FormRequest
             'service_counter_id' => ['nullable', 'exists:service_counters,id'],
             'appointment_date' => ['required', 'date'],
             'reference_code' => ['nullable', 'string', 'max:255', 'unique:appointments,reference_code'],
-            'status' => ['sometimes', Rule::in(['pending', 'confirmed', 'in_progress', 'completed', 'no_show', 'cancelled'])],
+            'status' => ['sometimes', Rule::in(['pending', 'confirmed', 'in_progress', 'completed', 'cancelled'])],
         ];
     }
 }
