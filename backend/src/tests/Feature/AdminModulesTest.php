@@ -71,3 +71,46 @@ it('forbids institution role from admin only users endpoint', function () {
         ->assertStatus(403)
         ->assertJsonPath('success', false);
 });
+
+it('returns public institutions map data', function () {
+    Institution::query()->create([
+        'name' => 'Municipality A',
+        'slug' => 'municipality-a',
+        'city' => 'Rabat',
+        'adress' => 'Avenue Hassan II',
+        'description' => 'Public services A',
+        'opening_time' => '08:00',
+        'closing_time' => '16:00',
+        'working_days' => ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+        'max_appointments_per_day' => 120,
+        'status' => 'active',
+    ]);
+
+    $this->getJson('/api/institutions/map')
+        ->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('data.0.slug', 'municipality-a');
+});
+
+it('allows admin to approve an institution', function () {
+    $token = createAdminTokenForModulesTest();
+
+    $institution = Institution::query()->create([
+        'name' => 'Registry Office',
+        'slug' => 'registry-office',
+        'city' => 'Casablanca',
+        'adress' => 'Main street',
+        'description' => 'Registry services',
+        'opening_time' => '08:00',
+        'closing_time' => '16:00',
+        'working_days' => ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+        'max_appointments_per_day' => 80,
+        'status' => 'inactive',
+    ]);
+
+    $this->withHeader('Authorization', 'Bearer '.$token)
+        ->patchJson('/api/institutions/'.$institution->id.'/approve')
+        ->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('data.status', 'active');
+});

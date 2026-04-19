@@ -225,3 +225,43 @@ it('shifts queue positions after cancelling first appointment', function () {
     expect($remaining->queueEntry)->not->toBeNull();
     expect($remaining->queueEntry->position)->toBe(1);
 });
+
+it('returns queue position details for appointment owner', function () {
+    [$citizen, $token] = actingCitizenToken();
+    $service = seedService();
+
+    $create = $this->withHeader('Authorization', 'Bearer '.$token)
+        ->postJson('/api/appointments', [
+            'service_id' => $service->id,
+            'appointment_date' => now()->addDay()->setHour(9)->setMinute(0)->format('Y-m-d H:i:s'),
+        ])
+        ->assertCreated();
+
+    $appointmentId = $create->json('data.id');
+
+    $this->withHeader('Authorization', 'Bearer '.$token)
+        ->getJson('/api/appointments/'.$appointmentId.'/queue-position')
+        ->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('data.appointment_id', $appointmentId);
+});
+
+it('forbids citizen from reading another appointment queue position', function () {
+    [$owner, $ownerToken] = actingCitizenToken();
+    [, $otherToken] = actingCitizenToken();
+    $service = seedService();
+
+    $create = $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+        ->postJson('/api/appointments', [
+            'service_id' => $service->id,
+            'appointment_date' => now()->addDays(2)->setHour(9)->setMinute(30)->format('Y-m-d H:i:s'),
+        ])
+        ->assertCreated();
+
+    $appointmentId = $create->json('data.id');
+
+    $this->withHeader('Authorization', 'Bearer '.$otherToken)
+        ->getJson('/api/appointments/'.$appointmentId.'/queue-position')
+        ->assertStatus(403)
+        ->assertJsonPath('success', false);
+});
