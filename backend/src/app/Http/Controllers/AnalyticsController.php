@@ -15,7 +15,19 @@ class AnalyticsController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
+        if (! $user) {
+            return $this->error('Unauthenticated.', 401);
+        }
+
         $serviceId = $request->filled('service_id') ? $request->integer('service_id') : null;
+
+        if ($user->role === 'manager') {
+            return $this->success(
+                $this->analyticsService->getDashboardMetricsByInstitution((int) $user->institution_id),
+                'Analytics fetched successfully.'
+            );
+        }
 
         return $this->success(
             $this->analyticsService->getDashboardMetrics($serviceId),
