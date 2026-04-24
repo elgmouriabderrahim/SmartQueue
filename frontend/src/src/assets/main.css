@@ -1,0 +1,180 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  /* Transformed palette - clean, airy, glass residence */
+  --ink-950: #1a1a1a;
+  --ink-700: #4a4a4a;
+  --ink-500: #8a8a8a;
+  --ink-300: #c4c4c4;
+  --paper-100: #ffffff;
+  --paper-200: #fafafa;
+  --paper-300: #f5f5f5;
+  --line-200: #e8e8e8;
+  --line-300: #dddddd;
+  --accent-500: #2c5f6e;
+  --accent-600: #1e454f;
+  --signal-500: #c9672e;
+  --danger-500: #bc4a4a;
+  
+  /* Glass effect variables */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+}
+
+body {
+  color: var(--ink-950);
+  background: linear-gradient(135deg, #f5f7fa 0%, #eef2f5 100%);
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  min-height: 100vh;
+}
+
+#app {
+  min-height: 100vh;
+  backdrop-filter: blur(0px);
+}
+
+h1, h2, h3 {
+  font-family: 'Playfair Display', serif;
+  letter-spacing: -0.01em;
+  font-weight: 500;
+}
+
+/* Glassmorphism input fields */
+.input-shell {
+  @apply w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-all duration-300;
+  border-color: var(--line-300);
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  color: var(--ink-950);
+  box-shadow: var(--glass-shadow);
+}
+
+.input-shell:focus {
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 4px rgba(44, 95, 110, 0.12);
+  transform: translateY(-1px);
+}
+
+/* Glass panels - panoramic style */
+.panel-shell {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  box-shadow: var(--glass-shadow);
+  transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+}
+
+.panel-shell:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Subtle grid pattern */
+.brand-grid-bg {
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: center;
+}
+
+.reveal-rise {
+  animation: reveal-rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Workspace theme - cleaner glass */
+.workspace-theme .panel-shell {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 28px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.03);
+}
+
+.workspace-theme .input-shell {
+  border-color: var(--line-300);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  color: var(--ink-950);
+}
+
+.workspace-theme .input-shell::placeholder {
+  color: var(--ink-500);
+  font-weight: 300;
+}
+
+.workspace-theme .input-shell:focus {
+  border-color: var(--accent-500);
+  box-shadow: 0 0 0 4px rgba(44, 95, 110, 0.1);
+}
+
+.workspace-theme .brand-grid-bg {
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.015) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: center;
+}
+
+/* Ribbon - subtle gradient */
+.workspace-ribbon {
+  background: linear-gradient(105deg, rgba(44, 95, 110, 0.08) 0%, rgba(201, 103, 46, 0.05) 100%);
+  backdrop-filter: blur(8px);
+  color: var(--ink-700);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Noise fabric - softer */
+.noise-fabric {
+  position: relative;
+}
+
+.noise-fabric::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+  background-size: 4px 4px;
+  opacity: 0.4;
+}
+
+@keyframes reveal-rise {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Custom glass card additions */
+.glass-card {
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(12px);
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Image styling for panoramic feel */
+img, .image-glass {
+  border-radius: 24px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+}
