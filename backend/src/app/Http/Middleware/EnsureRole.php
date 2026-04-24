@@ -2,8 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\ApiResponse;
 use Closure;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -14,11 +14,7 @@ class EnsureRole
         $user = $request->user();
 
         if (! $user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthenticated.',
-                'data' => null,
-            ], 401);
+            return ApiResponse::error('Unauthenticated.', 401);
         }
 
         if (! in_array($user->role, $roles, true)) {
@@ -29,11 +25,7 @@ class EnsureRole
                 return $next($request);
             }
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Forbidden.',
-                'data' => null,
-            ], 403);
+            return ApiResponse::error('Forbidden.', 403);
         }
 
         return $next($request);
