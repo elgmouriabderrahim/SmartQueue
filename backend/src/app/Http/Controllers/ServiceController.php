@@ -29,6 +29,11 @@ class ServiceController extends Controller
 
     public function store(StoreServiceRequest $request): JsonResponse
     {
+        $user = $request->user();
+        if ($user && $user->role === 'manager' && $request->integer('institution_id') !== (int) $user->institution_id) {
+            return $this->error('Forbidden.', 403);
+        }
+
         $service = $this->serviceCatalogService->create($request->validated());
 
         return $this->success($service->load(['institution', 'department', 'counters']), 'Service created successfully.', 201);
@@ -49,6 +54,11 @@ class ServiceController extends Controller
 
     public function update(UpdateServiceRequest $request, Service $service): JsonResponse
     {
+        $user = $request->user();
+        if ($user && $user->role === 'manager' && $service->institution_id !== (int) $user->institution_id) {
+            return $this->error('Forbidden.', 403);
+        }
+
         $updated = $this->serviceCatalogService->update($service, $request->validated());
 
         return $this->success($updated->load(['institution', 'department', 'counters']), 'Service updated successfully.');
@@ -56,6 +66,11 @@ class ServiceController extends Controller
 
     public function destroy(Service $service): JsonResponse
     {
+        $user = request()->user();
+        if ($user && $user->role === 'manager' && $service->institution_id !== (int) $user->institution_id) {
+            return $this->error('Forbidden.', 403);
+        }
+
         $service->delete();
 
         return $this->success(null, 'Service deleted successfully.');

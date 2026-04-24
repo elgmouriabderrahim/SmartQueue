@@ -3,16 +3,16 @@
 use App\Models\Institution;
 use App\Models\Service;
 use App\Models\User;
+use Laravel\Sanctum\Sanctum;
 
 it('returns analytics dashboard metrics for authenticated admin', function () {
     $admin = User::factory()->create([
         'role' => 'admin',
     ]);
 
-    $token = $admin->createToken('test')->plainTextToken;
+    Sanctum::actingAs($admin);
 
-    $response = $this->withHeader('Authorization', 'Bearer '.$token)
-        ->getJson('/api/analytics');
+    $response = $this->getJson('/api/analytics');
 
     $response->assertOk()
         ->assertJsonPath('success', true)
@@ -64,19 +64,17 @@ it('syncs analytics for a date as admin', function () {
         'role' => 'citizen',
     ]);
 
-    $citizenToken = $citizen->createToken('test')->plainTextToken;
+    Sanctum::actingAs($citizen);
 
-    $this->withHeader('Authorization', 'Bearer '.$citizenToken)
-        ->postJson('/api/appointments', [
+    $this->postJson('/api/appointments', [
             'service_id' => $service->id,
             'appointment_date' => now()->addDay()->setHour(10)->setMinute(0)->format('Y-m-d H:i:s'),
         ])
         ->assertCreated();
 
-    $token = $admin->createToken('test')->plainTextToken;
+    Sanctum::actingAs($admin);
 
-    $response = $this->withHeader('Authorization', 'Bearer '.$token)
-        ->postJson('/api/analytics/sync', [
+    $response = $this->postJson('/api/analytics/sync', [
             'date' => now()->addDay()->toDateString(),
         ]);
 

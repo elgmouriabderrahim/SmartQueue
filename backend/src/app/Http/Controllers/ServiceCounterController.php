@@ -21,6 +21,10 @@ class ServiceCounterController extends Controller
 
         $counters = ServiceCounter::query()
             ->with(['service'])
+            ->when(
+                $request->user() && in_array($request->user()->role, ['manager', 'employee'], true),
+                fn ($query) => $query->whereHas('service', fn ($serviceQuery) => $serviceQuery->where('institution_id', $request->user()->institution_id))
+            )
             ->latest()
             ->paginate($perPage);
 
@@ -29,6 +33,22 @@ class ServiceCounterController extends Controller
 
     public function store(StoreServiceCounterRequest $request): JsonResponse
     {
+        $user = $request->user();
+        if ($user && $user->role === 'employee') {
+            return $this->error('Employees cannot create service counters.', 403);
+        }
+
+        if ($user && $user->role === 'manager') {
+            $belongsToInstitution = \App\Models\Service::query()
+                ->where('id', $request->integer('service_id'))
+                ->where('institution_id', $user->institution_id)
+                ->exists();
+
+            if (! $belongsToInstitution) {
+                return $this->error('Forbidden.', 403);
+            }
+        }
+
         $counter = $this->serviceCounterService->create($request->validated());
 
         return $this->success($counter->load('service'), 'Service counter created successfully.', 201);
@@ -36,11 +56,19 @@ class ServiceCounterController extends Controller
 
     public function show(ServiceCounter $serviceCounter): JsonResponse
     {
+        if ($response = $this->forbidIfNoInstitutionAccess(request(), $serviceCounter)) {
+            return $response;
+        }
+
         return $this->success($serviceCounter->load(['service', 'appointments']), 'Service counter fetched successfully.');
     }
 
     public function update(UpdateServiceCounterRequest $request, ServiceCounter $serviceCounter): JsonResponse
     {
+        if ($response = $this->forbidIfNoInstitutionAccess($request, $serviceCounter)) {
+            return $response;
+        }
+
         $updated = $this->serviceCounterService->update($serviceCounter, $request->validated());
 
         return $this->success($updated->load('service'), 'Service counter updated successfully.');
@@ -48,8 +76,40 @@ class ServiceCounterController extends Controller
 
     public function destroy(ServiceCounter $serviceCounter): JsonResponse
     {
+        $user = request()->user();
+        if ($user && $user->role === 'employee') {
+            return $this->error('Employees cannot delete service counters.', 403);
+        }
+
+        if ($response = $this->forbidIfNoInstitutionAccess(request(), $serviceCounter)) {
+            return $response;
+        }
+
         $this->serviceCounterService->delete($serviceCounter);
 
         return $this->success(null, 'Service counter deleted successfully.');
+    }
+
+    private function forbidIfNoInstitutionAccess(Request $request, ServiceCounter $serviceCounter): ?JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return $this->error('Unauthenticated.', 401);
+        }
+
+        if ($user->role === 'admin') {
+            return null;
+        }
+
+        if (! in_array($user->role, ['manager', 'employee'], true)) {
+            return $this->error('Forbidden.', 403);
+        }
+
+        $belongsToInstitution = $serviceCounter->service()->where('institution_id', $user->institution_id)->exists();
+        if (! $belongsToInstitution) {
+            return $this->error('Forbidden.', 403);
+        }
+
+        return null;
     }
 }

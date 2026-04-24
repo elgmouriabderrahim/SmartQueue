@@ -14,7 +14,6 @@ class StoreRatingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_id' => ['required', 'exists:users,id'],
             'appointment_id' => ['required', 'exists:appointments,id', 'unique:ratings,appointment_id'],
             'service_id' => ['required', 'exists:services,id'],
             'score' => ['required', 'integer', 'between:1,5'],

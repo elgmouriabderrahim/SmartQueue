@@ -29,6 +29,11 @@ class DepartmentController extends Controller
 
     public function store(StoreDepartmentRequest $request): JsonResponse
     {
+        $user = $request->user();
+        if ($user && $user->role === 'manager' && $request->integer('institution_id') !== (int) $user->institution_id) {
+            return $this->error('Forbidden.', 403);
+        }
+
         $department = $this->departmentService->create($request->validated());
 
         return $this->success($department->load(['institution', 'services']), 'Department created successfully.', 201);
@@ -41,6 +46,11 @@ class DepartmentController extends Controller
 
     public function update(UpdateDepartmentRequest $request, Department $department): JsonResponse
     {
+        $user = $request->user();
+        if ($user && $user->role === 'manager' && $department->institution_id !== (int) $user->institution_id) {
+            return $this->error('Forbidden.', 403);
+        }
+
         $updated = $this->departmentService->update($department, $request->validated());
 
         return $this->success($updated->load(['institution', 'services']), 'Department updated successfully.');
@@ -48,6 +58,11 @@ class DepartmentController extends Controller
 
     public function destroy(Department $department): JsonResponse
     {
+        $user = request()->user();
+        if ($user && $user->role === 'manager' && $department->institution_id !== (int) $user->institution_id) {
+            return $this->error('Forbidden.', 403);
+        }
+
         $this->departmentService->delete($department);
 
         return $this->success(null, 'Department deleted successfully.');

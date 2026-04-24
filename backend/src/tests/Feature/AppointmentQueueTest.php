@@ -4,6 +4,7 @@ use App\Models\Appointment;
 use App\Models\Institution;
 use App\Models\Service;
 use App\Models\User;
+use Laravel\Sanctum\Sanctum;
 
 function actingCitizenToken(): array
 {
@@ -55,8 +56,9 @@ it('creates appointment and auto assigns queue position', function () {
     [$user, $token] = actingCitizenToken();
     $service = seedService();
 
-    $response = $this->withHeader('Authorization', 'Bearer '.$token)
-        ->postJson('/api/appointments', [
+    Sanctum::actingAs($user);
+
+    $response = $this->postJson('/api/appointments', [
             'user_id' => $user->id,
             'service_id' => $service->id,
             'appointment_date' => now()->addDay()->setHour(9)->setMinute(0)->format('Y-m-d H:i:s'),
@@ -74,15 +76,17 @@ it('assigns sequential queue positions and estimates waiting time', function () 
 
     $dateTime = now()->addDays(3)->setHour(9)->setMinute(0)->format('Y-m-d H:i:s');
 
-    $first = $this->withHeader('Authorization', 'Bearer '.$tokenOne)
-        ->postJson('/api/appointments', [
+    Sanctum::actingAs($userOne);
+
+    $first = $this->postJson('/api/appointments', [
             'user_id' => $userOne->id,
             'service_id' => $service->id,
             'appointment_date' => $dateTime,
         ]);
 
-    $second = $this->withHeader('Authorization', 'Bearer '.$tokenTwo)
-        ->postJson('/api/appointments', [
+    Sanctum::actingAs($userTwo);
+
+    $second = $this->postJson('/api/appointments', [
             'user_id' => $userTwo->id,
             'service_id' => $service->id,
             'appointment_date' => $dateTime,
@@ -97,15 +101,17 @@ it('prevents double booking at same datetime for same user', function () {
     [$user, $token] = actingCitizenToken();
     $service = seedService();
 
+    Sanctum::actingAs($user);
+
     $dateTime = now()->addDays(2)->setHour(10)->setMinute(0)->format('Y-m-d H:i:s');
 
-    $this->withHeader('Authorization', 'Bearer '.$token)->postJson('/api/appointments', [
+    $this->postJson('/api/appointments', [
         'user_id' => $user->id,
         'service_id' => $service->id,
         'appointment_date' => $dateTime,
     ])->assertCreated();
 
-    $second = $this->withHeader('Authorization', 'Bearer '.$token)->postJson('/api/appointments', [
+    $second = $this->postJson('/api/appointments', [
         'user_id' => $user->id,
         'service_id' => $service->id,
         'appointment_date' => $dateTime,
@@ -118,8 +124,9 @@ it('cancels appointment and removes queue entry', function () {
     [$user, $token] = actingCitizenToken();
     $service = seedService();
 
-    $create = $this->withHeader('Authorization', 'Bearer '.$token)
-        ->postJson('/api/appointments', [
+    Sanctum::actingAs($user);
+
+    $create = $this->postJson('/api/appointments', [
             'user_id' => $user->id,
             'service_id' => $service->id,
             'appointment_date' => now()->addDay()->setHour(11)->setMinute(0)->format('Y-m-d H:i:s'),
@@ -127,8 +134,7 @@ it('cancels appointment and removes queue entry', function () {
 
     $id = $create->json('data.id');
 
-    $this->withHeader('Authorization', 'Bearer '.$token)
-        ->deleteJson('/api/appointments/'.$id)
+    $this->deleteJson('/api/appointments/'.$id)
         ->assertOk()
         ->assertJsonPath('success', true);
 
@@ -142,8 +148,9 @@ it('forbids citizen from accessing another citizen appointment', function () {
     [$otherCitizen, $otherToken] = actingCitizenToken();
     $service = seedService();
 
-    $create = $this->withHeader('Authorization', 'Bearer '.$ownerToken)
-        ->postJson('/api/appointments', [
+    Sanctum::actingAs($owner);
+
+    $create = $this->postJson('/api/appointments', [
             'service_id' => $service->id,
             'appointment_date' => now()->addDay()->setHour(12)->setMinute(0)->format('Y-m-d H:i:s'),
         ])
@@ -151,28 +158,28 @@ it('forbids citizen from accessing another citizen appointment', function () {
 
     $appointmentId = $create->json('data.id');
 
-    $this->withHeader('Authorization', 'Bearer '.$otherToken)
-        ->getJson('/api/appointments/'.$appointmentId)
+    Sanctum::actingAs($otherCitizen);
+
+    $this->getJson('/api/appointments/'.$appointmentId)
         ->assertStatus(403);
 
-    $this->withHeader('Authorization', 'Bearer '.$otherToken)
-        ->putJson('/api/appointments/'.$appointmentId, [
+    $this->putJson('/api/appointments/'.$appointmentId, [
             'appointment_date' => now()->addDays(2)->setHour(13)->setMinute(0)->format('Y-m-d H:i:s'),
         ])
         ->assertStatus(403);
 
-    $this->withHeader('Authorization', 'Bearer '.$otherToken)
-        ->deleteJson('/api/appointments/'.$appointmentId)
+    $this->deleteJson('/api/appointments/'.$appointmentId)
         ->assertStatus(403);
 });
 
 it('completes appointment and updates queue progress', function () {
     [$citizen, $citizenToken] = actingCitizenToken();
-    [, $adminToken] = actingAdminToken();
+    [$admin, $adminToken] = actingAdminToken();
     $service = seedService();
 
-    $create = $this->withHeader('Authorization', 'Bearer '.$citizenToken)
-        ->postJson('/api/appointments', [
+    Sanctum::actingAs($citizen);
+
+    $create = $this->postJson('/api/appointments', [
             'service_id' => $service->id,
             'appointment_date' => now()->addDays(2)->setHour(9)->setMinute(30)->format('Y-m-d H:i:s'),
         ])
@@ -180,8 +187,9 @@ it('completes appointment and updates queue progress', function () {
 
     $appointmentId = $create->json('data.id');
 
-    $this->withHeader('Authorization', 'Bearer '.$adminToken)
-        ->patchJson('/api/appointments/'.$appointmentId.'/complete')
+    Sanctum::actingAs($admin);
+
+    $this->patchJson('/api/appointments/'.$appointmentId.'/complete')
         ->assertOk()
         ->assertJsonPath('data.status', 'completed');
 
@@ -200,15 +208,17 @@ it('shifts queue positions after cancelling first appointment', function () {
 
     $dateTime = now()->addDays(4)->setHour(10)->setMinute(0)->format('Y-m-d H:i:s');
 
-    $first = $this->withHeader('Authorization', 'Bearer '.$tokenOne)
-        ->postJson('/api/appointments', [
+    Sanctum::actingAs($citizenOne);
+
+    $first = $this->postJson('/api/appointments', [
             'service_id' => $service->id,
             'appointment_date' => $dateTime,
         ])
         ->assertCreated();
 
-    $second = $this->withHeader('Authorization', 'Bearer '.$tokenTwo)
-        ->postJson('/api/appointments', [
+    Sanctum::actingAs($citizenTwo);
+
+    $second = $this->postJson('/api/appointments', [
             'service_id' => $service->id,
             'appointment_date' => $dateTime,
         ])
@@ -217,8 +227,9 @@ it('shifts queue positions after cancelling first appointment', function () {
     $firstId = $first->json('data.id');
     $secondId = $second->json('data.id');
 
-    $this->withHeader('Authorization', 'Bearer '.$tokenOne)
-        ->deleteJson('/api/appointments/'.$firstId)
+    Sanctum::actingAs($citizenOne);
+
+    $this->deleteJson('/api/appointments/'.$firstId)
         ->assertOk();
 
     $remaining = Appointment::query()->with('queueEntry')->findOrFail($secondId);
@@ -230,8 +241,9 @@ it('returns queue position details for appointment owner', function () {
     [$citizen, $token] = actingCitizenToken();
     $service = seedService();
 
-    $create = $this->withHeader('Authorization', 'Bearer '.$token)
-        ->postJson('/api/appointments', [
+    Sanctum::actingAs($citizen);
+
+    $create = $this->postJson('/api/appointments', [
             'service_id' => $service->id,
             'appointment_date' => now()->addDay()->setHour(9)->setMinute(0)->format('Y-m-d H:i:s'),
         ])
@@ -239,8 +251,7 @@ it('returns queue position details for appointment owner', function () {
 
     $appointmentId = $create->json('data.id');
 
-    $this->withHeader('Authorization', 'Bearer '.$token)
-        ->getJson('/api/appointments/'.$appointmentId.'/queue-position')
+    $this->getJson('/api/appointments/'.$appointmentId.'/queue-position')
         ->assertOk()
         ->assertJsonPath('success', true)
         ->assertJsonPath('data.appointment_id', $appointmentId);
@@ -248,11 +259,12 @@ it('returns queue position details for appointment owner', function () {
 
 it('forbids citizen from reading another appointment queue position', function () {
     [$owner, $ownerToken] = actingCitizenToken();
-    [, $otherToken] = actingCitizenToken();
+    [$other, $otherToken] = actingCitizenToken();
     $service = seedService();
 
-    $create = $this->withHeader('Authorization', 'Bearer '.$ownerToken)
-        ->postJson('/api/appointments', [
+    Sanctum::actingAs($owner);
+
+    $create = $this->postJson('/api/appointments', [
             'service_id' => $service->id,
             'appointment_date' => now()->addDays(2)->setHour(9)->setMinute(30)->format('Y-m-d H:i:s'),
         ])
@@ -260,8 +272,9 @@ it('forbids citizen from reading another appointment queue position', function (
 
     $appointmentId = $create->json('data.id');
 
-    $this->withHeader('Authorization', 'Bearer '.$otherToken)
-        ->getJson('/api/appointments/'.$appointmentId.'/queue-position')
+    Sanctum::actingAs($other);
+
+    $this->getJson('/api/appointments/'.$appointmentId.'/queue-position')
         ->assertStatus(403)
         ->assertJsonPath('success', false);
 });

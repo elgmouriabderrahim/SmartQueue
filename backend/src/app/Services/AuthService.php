@@ -16,9 +16,9 @@ class AuthService
             'email' => $data['email'],
             'password' => $data['password'],
             'identity_number' => $data['identity_number'] ?? null,
-            'role' => $this->normalizeRole($data['role'] ?? 'citizen'),
-            'institution_id' => $data['institution_id'] ?? null,
-            'department_id' => $data['department_id'] ?? null,
+            'role' => 'citizen',
+            'institution_id' => null,
+            'department_id' => null,
         ]);
 
         $token = $user->createToken('api-token')->plainTextToken;
@@ -52,13 +52,5 @@ class AuthService
     public function logout(User $user): void
     {
         $user->currentAccessToken()?->delete();
-    }
-
-    private function normalizeRole(string $role): string
-    {
-        return match ($role) {
-            'institution' => 'manager',
-            default => $role,
-        };
     }
 }

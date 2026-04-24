@@ -5,12 +5,17 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Queue\StoreQueueRequest;
 use App\Http\Requests\Queue\UpdateQueueRequest;
 use App\Models\Queue;
+use App\Services\QueueService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class QueueController extends Controller
 {
+    public function __construct(private readonly QueueService $queueService)
+    {
+    }
+
     #[OA\Get(
         path: '/queues',
         tags: ['Queue'],
@@ -23,6 +28,10 @@ class QueueController extends Controller
 
         $queues = Queue::query()
             ->with(['service', 'entries'])
+            ->when(
+                $request->user() && in_array($request->user()->role, ['manager', 'employee'], true),
+                fn ($query) => $query->whereHas('service', fn ($serviceQuery) => $serviceQuery->where('institution_id', $request->user()->institution_id))
+            )
             ->latest('date')
             ->paginate($perPage);
 
@@ -47,6 +56,18 @@ class QueueController extends Controller
     )]
     public function store(StoreQueueRequest $request): JsonResponse
     {
+        $user = $request->user();
+        if ($user && $user->role === 'manager') {
+            $belongsToManagerInstitution = \App\Models\Service::query()
+                ->where('id', $request->integer('service_id'))
+                ->where('institution_id', $user->institution_id)
+                ->exists();
+
+            if (! $belongsToManagerInstitution) {
+                return $this->error('Forbidden.', 403);
+            }
+        }
+
         $queue = Queue::query()->create($request->validated());
 
         return $this->success($queue->load(['service', 'entries']), 'Queue created successfully.', 201);
@@ -61,20 +82,60 @@ class QueueController extends Controller
     )]
     public function show(Queue $queue): JsonResponse
     {
+        if ($response = $this->forbidIfNoInstitutionAccess(request(), $queue)) {
+            return $response;
+        }
+
         return $this->success($queue->load(['service', 'entries.appointment', 'appointments']), 'Queue fetched successfully.');
     }
 
     public function update(UpdateQueueRequest $request, Queue $queue): JsonResponse
     {
+        if ($response = $this->forbidIfNoInstitutionAccess($request, $queue)) {
+            return $response;
+        }
+
+        $oldPosition = (int) $queue->current_position;
         $queue->update($request->validated());
+
+        if ((int) $queue->current_position !== $oldPosition) {
+            $this->queueService->notifyQueueUpdates($queue->id);
+        }
 
         return $this->success($queue->fresh()->load(['service', 'entries']), 'Queue updated successfully.');
     }
 
     public function destroy(Queue $queue): JsonResponse
     {
+        if ($response = $this->forbidIfNoInstitutionAccess(request(), $queue)) {
+            return $response;
+        }
+
         $queue->delete();
 
         return $this->success(null, 'Queue deleted successfully.');
+    }
+
+    private function forbidIfNoInstitutionAccess(Request $request, Queue $queue): ?JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return $this->error('Unauthenticated.', 401);
+        }
+
+        if ($user->role === 'admin') {
+            return null;
+        }
+
+        if (! in_array($user->role, ['manager', 'employee'], true)) {
+            return $this->error('Forbidden.', 403);
+        }
+
+        $belongsToInstitution = $queue->service()->where('institution_id', $user->institution_id)->exists();
+        if (! $belongsToInstitution) {
+            return $this->error('Forbidden.', 403);
+        }
+
+        return null;
     }
 }

@@ -31,6 +31,10 @@ class AppointmentController extends Controller
         $appointments = Appointment::query()
             ->with(['user', 'service', 'queue', 'counter', 'queueEntry', 'rating'])
             ->when($user && $user->role === 'citizen', fn ($query) => $query->where('user_id', $user->id))
+            ->when(
+                $user && in_array($user->role, ['manager', 'employee'], true),
+                fn ($query) => $query->whereHas('service', fn ($serviceQuery) => $serviceQuery->where('institution_id', $user->institution_id))
+            )
             ->latest('appointment_date')
             ->paginate($perPage);
 
@@ -82,7 +86,7 @@ class AppointmentController extends Controller
     )]
     public function show(Appointment $appointment): JsonResponse
     {
-        if ($response = $this->denyIfCitizenNotOwner(request(), $appointment)) {
+        if ($response = $this->denyIfNoAccess(request(), $appointment)) {
             return $response;
         }
 
@@ -106,7 +110,7 @@ class AppointmentController extends Controller
     )]
     public function update(UpdateAppointmentRequest $request, Appointment $appointment): JsonResponse
     {
-        if ($response = $this->denyIfCitizenNotOwner($request, $appointment)) {
+        if ($response = $this->denyIfNoAccess($request, $appointment)) {
             return $response;
         }
 
@@ -130,7 +134,7 @@ class AppointmentController extends Controller
     )]
     public function destroy(Appointment $appointment): JsonResponse
     {
-        if ($response = $this->denyIfCitizenNotOwner(request(), $appointment)) {
+        if ($response = $this->denyIfNoAccess(request(), $appointment)) {
             return $response;
         }
 
@@ -148,6 +152,10 @@ class AppointmentController extends Controller
     )]
     public function complete(Appointment $appointment): JsonResponse
     {
+        if ($response = $this->denyIfNoAccess(request(), $appointment)) {
+            return $response;
+        }
+
         $completed = $this->appointmentService->complete($appointment);
 
         return $this->success($completed, 'Appointment completed successfully.');
@@ -155,7 +163,7 @@ class AppointmentController extends Controller
 
     public function queuePosition(Request $request, Appointment $appointment): JsonResponse
     {
-        if ($response = $this->denyIfCitizenNotOwner($request, $appointment)) {
+        if ($response = $this->denyIfNoAccess($request, $appointment)) {
             return $response;
         }
 
@@ -171,12 +179,25 @@ class AppointmentController extends Controller
         ], 'Appointment queue position fetched successfully.');
     }
 
-    private function denyIfCitizenNotOwner(Request $request, Appointment $appointment): ?JsonResponse
+    private function denyIfNoAccess(Request $request, Appointment $appointment): ?JsonResponse
     {
         $user = $request->user();
+        if (! $user) {
+            return $this->error('Unauthenticated.', 401);
+        }
 
-        if ($user && $user->role === 'citizen' && $appointment->user_id !== $user->id) {
+        if ($user->role === 'citizen' && $appointment->user_id !== $user->id) {
             return $this->error('Forbidden.', 403);
+        }
+
+        if (in_array($user->role, ['manager', 'employee'], true)) {
+            $belongsToInstitution = $appointment->service()
+                ->where('institution_id', $user->institution_id)
+                ->exists();
+
+            if (! $belongsToInstitution) {
+                return $this->error('Forbidden.', 403);
+            }
         }
 
         return null;

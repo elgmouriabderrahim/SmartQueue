@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 class AppointmentService
@@ -19,7 +20,7 @@ class AppointmentService
     public function create(array $data): Appointment
     {
         $service = Service::query()->findOrFail($data['service_id']);
-        $appointmentDate = \Illuminate\Support\Carbon::parse($data['appointment_date']);
+        $appointmentDate = Carbon::parse($data['appointment_date']);
 
         $this->guardAgainstDoubleBooking((int) $data['user_id'], $appointmentDate->toDateTimeString());
         $this->validateServiceAvailability($service, $appointmentDate->toDateString());
@@ -34,7 +35,7 @@ class AppointmentService
         ]);
 
         $queueEntry = $this->queueService->attachAppointmentToQueue($appointment);
-
+    
         $user = User::query()->find($appointment->user_id);
         if ($user) {
             $this->notificationService->createForUser($user, 'appointment_reminder', [
@@ -52,7 +53,7 @@ class AppointmentService
     public function update(Appointment $appointment, array $data): Appointment
     {
         $newDate = isset($data['appointment_date'])
-            ? \Illuminate\Support\Carbon::parse($data['appointment_date'])
+            ? Carbon::parse($data['appointment_date'])
             : $appointment->appointment_date;
 
         $newServiceId = $data['service_id'] ?? $appointment->service_id;
@@ -83,9 +84,17 @@ class AppointmentService
             $this->queueService->attachAppointmentToQueue($appointment);
         }
 
+        $user = User::query()->find($appointment->user_id);
+        if ($user) {
+            $this->notificationService->createForUser($user, 'appointment_reminder', [
+                'title' => 'Appointment updated',
+                'message' => 'Your appointment was updated successfully.',
+                'appointment_id' => $appointment->id,
+            ]);
+        }
+
         return $this->enrichWithQueueData($appointment->fresh(['service', 'queueEntry', 'queue']));
     }
-
     public function cancel(Appointment $appointment): Appointment
     {
         $appointment->status = 'cancelled';
@@ -111,6 +120,15 @@ class AppointmentService
         $appointment->save();
 
         $this->queueService->markAppointmentCompleted($appointment);
+
+        $user = User::query()->find($appointment->user_id);
+        if ($user) {
+            $this->notificationService->createForUser($user, 'queue_status', [
+                'title' => 'Appointment completed',
+                'message' => 'Your appointment has been marked as completed.',
+                'appointment_id' => $appointment->id,
+            ]);
+        }
 
         return $this->enrichWithQueueData($appointment->fresh(['service', 'queueEntry', 'queue']));
     }
@@ -175,4 +193,5 @@ class AppointmentService
 
         return $appointment;
     }
+
 }
