@@ -7,6 +7,7 @@ use App\Models\Message;
 use App\Services\MessageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
 
 class MessageController extends Controller
@@ -47,9 +48,10 @@ class MessageController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['recipient_id', 'content'],
+                required: ['content'],
                 properties: [
-                    new OA\Property(property: 'recipient_id', type: 'integer', example: 2),
+                    new OA\Property(property: 'recipient_id', type: 'integer', nullable: true, example: 2),
+                    new OA\Property(property: 'institution_id', type: 'integer', nullable: true, example: 1),
                     new OA\Property(property: 'content', type: 'string', example: 'Hello, I need support.'),
                 ]
             )
@@ -90,7 +92,15 @@ class MessageController extends Controller
             return $this->error('Forbidden.', 403);
         }
 
-        $message->update($request->only(['status']));
+        $request->validate([
+            'status' => ['required', Rule::in(['new', 'read', 'in_progress', 'resolved', 'closed'])],
+        ]);
+
+        if (! in_array($request->user()?->role, ['manager', 'employee'], true)) {
+            return $this->error('Only institution staff can update message status.', 403);
+        }
+
+        $message->update(['status' => $request->string('status')->toString()]);
 
         return $this->success($message->fresh()->load(['sender', 'recipient', 'appointment']), 'Message updated successfully.');
     }
