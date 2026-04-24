@@ -18,9 +18,16 @@ class InstitutionController extends Controller
     public function index(Request $request): JsonResponse
     {
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
+        $city = trim($request->string('city')->toString());
+        $search = trim($request->string('q')->toString());
 
         $institutions = Institution::query()
             ->with(['departments', 'services'])
+            ->when($city !== '', fn ($query) => $query->where('city', 'like', '%'.$city.'%'))
+            ->when($search !== '', fn ($query) => $query->where(function ($nested) use ($search): void {
+                $nested->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('slug', 'like', '%'.$search.'%');
+            }))
             ->latest()
             ->paginate($perPage);
 
@@ -59,6 +66,11 @@ class InstitutionController extends Controller
 
     public function update(UpdateInstitutionRequest $request, Institution $institution): JsonResponse
     {
+        $user = $request->user();
+        if ($user && $user->role === 'manager' && $user->institution_id !== $institution->id) {
+            return $this->error('Forbidden.', 403);
+        }
+
         $updated = $this->institutionService->update($institution, $request->validated());
 
         return $this->success($updated->load(['departments', 'services']), 'Institution updated successfully.');
