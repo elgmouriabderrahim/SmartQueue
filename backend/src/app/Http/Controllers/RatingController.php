@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Rating\StoreRatingRequest;
 use App\Http\Requests\Rating\UpdateRatingRequest;
+use App\Models\Appointment;
 use App\Models\Rating;
 use App\Services\RatingService;
 use Illuminate\Http\JsonResponse;
@@ -55,7 +56,28 @@ class RatingController extends Controller
     )]
     public function store(StoreRatingRequest $request): JsonResponse
     {
-        $rating = $this->ratingService->create($request->validated());
+        $user = $request->user();
+        if (! $user) {
+            return $this->error('Unauthenticated.', 401);
+        }
+
+        $appointment = Appointment::query()->findOrFail($request->integer('appointment_id'));
+        if ($appointment->user_id !== $user->id) {
+            return $this->error('You can only rate your own appointments.', 403);
+        }
+
+        if ($appointment->status !== 'completed') {
+            return $this->error('Only completed appointments can be rated.', 422);
+        }
+
+        if ((int) $appointment->service_id !== $request->integer('service_id')) {
+            return $this->error('Service must match the appointment service.', 422);
+        }
+
+        $rating = $this->ratingService->create([
+            ...$request->validated(),
+            'user_id' => $user->id,
+        ]);
 
         return $this->success($rating->load(['user', 'appointment', 'service']), 'Rating created successfully.', 201);
     }
@@ -74,6 +96,10 @@ class RatingController extends Controller
 
     public function update(UpdateRatingRequest $request, Rating $rating): JsonResponse
     {
+        if ($rating->user_id !== $request->user()?->id) {
+            return $this->error('Forbidden.', 403);
+        }
+
         $updated = $this->ratingService->update($rating, $request->validated());
 
         return $this->success($updated->load(['user', 'appointment', 'service']), 'Rating updated successfully.');
@@ -81,6 +107,10 @@ class RatingController extends Controller
 
     public function destroy(Rating $rating): JsonResponse
     {
+        if ($rating->user_id !== request()->user()?->id) {
+            return $this->error('Forbidden.', 403);
+        }
+
         $this->ratingService->delete($rating);
 
         return $this->success(null, 'Rating deleted successfully.');
