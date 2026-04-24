@@ -39,6 +39,8 @@ it('allows admin to manage departments and settings', function () {
             'institution_id' => $institution->id,
             'name' => 'Civil Status',
             'slug' => 'civil-status',
+            'description' => 'Department for civil status operations',
+            'location' => 'Building A',
             'status' => 'active',
         ]);
 
