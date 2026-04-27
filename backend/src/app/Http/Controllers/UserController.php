@@ -20,7 +20,7 @@ class UserController extends Controller
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
 
         $users = User::query()
-            ->with(['institution', 'department'])
+            ->with(['institutions'])
             ->latest()
             ->paginate($perPage);
 
@@ -31,14 +31,13 @@ class UserController extends Controller
     {
         $user = $this->userManagementService->create($request->validated());
 
-        return $this->success($user->load(['institution', 'department']), 'User created successfully.', 201);
+        return $this->success($user->load(['institutions']), 'User created successfully.', 201);
     }
 
     public function show(User $user): JsonResponse
     {
         return $this->success($user->load([
-            'institution',
-            'department',
+            'institutions',
             'appointments',
             'ratings',
             'messagesSent',
@@ -51,7 +50,7 @@ class UserController extends Controller
     {
         $updated = $this->userManagementService->update($user, $request->validated());
 
-        return $this->success($updated->load(['institution', 'department']), 'User updated successfully.');
+        return $this->success($updated->load(['institutions']), 'User updated successfully.');
     }
 
     public function destroy(Request $request, User $user): JsonResponse

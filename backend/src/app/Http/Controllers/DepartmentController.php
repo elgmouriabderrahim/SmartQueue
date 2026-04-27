@@ -41,7 +41,7 @@ class DepartmentController extends Controller
 
     public function show(Department $department): JsonResponse
     {
-        return $this->success($department->load(['institution', 'services', 'users']), 'Department fetched successfully.');
+        return $this->success($department->load(['institution', 'services']), 'Department fetched successfully.');
     }
 
     public function update(UpdateDepartmentRequest $request, Department $department): JsonResponse

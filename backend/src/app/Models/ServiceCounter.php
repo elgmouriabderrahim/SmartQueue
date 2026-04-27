@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -13,20 +12,15 @@ class ServiceCounter extends Model
     use HasFactory;
 
     protected $fillable = [
-        'service_id',
         'counter_number',
         'name',
         'status',
     ];
 
-    public function service(): BelongsTo
-    {
-        return $this->belongsTo(Service::class);
-    }
-
     public function services(): BelongsToMany
     {
-        return $this->belongsToMany(Service::class, 'service_counter_service');
+        return $this->belongsToMany(Service::class, 'service_counter_service')
+            ->withTimestamps();
     }
 
     public function appointments(): HasMany

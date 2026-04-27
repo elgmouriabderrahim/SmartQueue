@@ -22,7 +22,7 @@ class UpdateAppointmentRequest extends FormRequest
             'service_counter_id' => [
                 'sometimes',
                 'nullable',
-                Rule::exists('service_counters', 'id')->where(function ($query) use ($serviceId) {
+                Rule::exists('service_counter_service', 'service_counter_id')->where(function ($query) use ($serviceId) {
                     if ($serviceId > 0) {
                         $query->where('service_id', $serviceId);
                     }

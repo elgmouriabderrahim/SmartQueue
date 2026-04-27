@@ -17,15 +17,9 @@ class AuthService
             'password' => $data['password'],
             'identity_number' => $data['identity_number'] ?? null,
             'role' => 'citizen',
-            'institution_id' => null,
-            'department_id' => null,
         ]);
 
         $token = $user->createToken('api-token')->plainTextToken;
-
-        if (in_array($user->role, ['manager', 'employee'], true)) {
-            $user->setAttribute('api_role', 'institution');
-        }
 
         return compact('user', 'token');
     }
@@ -41,10 +35,6 @@ class AuthService
         }
 
         $token = $user->createToken('api-token')->plainTextToken;
-
-        if (in_array($user->role, ['manager', 'employee'], true)) {
-            $user->setAttribute('api_role', 'institution');
-        }
 
         return compact('user', 'token');
     }

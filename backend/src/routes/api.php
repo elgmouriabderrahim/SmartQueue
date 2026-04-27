@@ -19,6 +19,7 @@ use App\Http\Controllers\RatingController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceCounterController;
 use App\Http\Controllers\UserController;
+use App\Support\ApiResponse;
 use Illuminate\Support\Facades\Route;
 
 Route::get('home', [HomeController::class, 'index'])->name('api.home');
@@ -102,5 +103,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
 	Route::get('analytics', [AnalyticsController::class, 'index'])->middleware('role:admin,manager');
 	Route::post('analytics/sync', [AnalyticsController::class, 'sync'])->middleware('role:admin');
+	Route::post('users', fn () => ApiResponse::methodNotAllowed())->middleware('role:admin');
 
 });

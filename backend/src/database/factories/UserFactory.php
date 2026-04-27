@@ -23,8 +23,6 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'identity_number' => fake()->optional()->numerify('########'),
             'role' => 'citizen',
-            'institution_id' => null,
-            'department_id' => null,
             'email_verified_at' => now(),
             'password' => Hash::make('password123'),
             'remember_token' => fake()->regexify('[A-Za-z0-9]{10}'),

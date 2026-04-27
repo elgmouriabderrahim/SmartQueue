@@ -105,8 +105,8 @@ it('allows manager to invite a citizen and the citizen accepts the invitation', 
 
     $manager = User::factory()->create([
         'role' => 'manager',
-        'institution_id' => $institution->id,
     ]);
+    $manager->institutions()->attach($institution->id);
 
     $citizen = makeCitizen();
 

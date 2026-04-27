@@ -3,12 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -22,8 +19,6 @@ class User extends Authenticatable
         'password',
         'identity_number',
         'role',
-        'institution_id',
-        'department_id',
     ];
 
     protected $hidden = [
@@ -33,6 +28,7 @@ class User extends Authenticatable
 
     protected $appends = [
         'api_role',
+        'institution_id',
     ];
 
     protected function casts(): array
@@ -43,31 +39,10 @@ class User extends Authenticatable
         ];
     }
 
-    protected static function booted(): void
-    {
-        static::saved(function (self $user): void {
-            if (! $user->wasRecentlyCreated && ! $user->wasChanged('institution_id')) {
-                return;
-            }
-
-            $user->syncInstitutionMembership();
-        });
-    }
-
-    public function institution(): BelongsTo
-    {
-        return $this->belongsTo(Institution::class);
-    }
-
-    public function institutions(): BelongsToMany
+    public function institutions()
     {
         return $this->belongsToMany(Institution::class, 'institution_user')
             ->withTimestamps();
-    }
-
-    public function department(): BelongsTo
-    {
-        return $this->belongsTo(Department::class);
     }
 
     public function appointments(): HasMany
@@ -107,10 +82,17 @@ class User extends Authenticatable
             : $this->role;
     }
 
+    public function getInstitutionIdAttribute(): ?int
+    {
+        return $this->currentInstitutionId();
+    }
+
     public function currentInstitutionId(): ?int
     {
-        if ($this->institution_id) {
-            return (int) $this->institution_id;
+        if ($this->relationLoaded('institutions')) {
+            $institution = $this->institutions->first();
+
+            return $institution?->id ? (int) $institution->id : null;
         }
 
         $pivotInstitutionId = $this->institutions()->value('institutions.id');
@@ -118,17 +100,11 @@ class User extends Authenticatable
         return $pivotInstitutionId ? (int) $pivotInstitutionId : null;
     }
 
-    public function syncInstitutionMembership(): void
+    public function syncInstitutionMembership(?int $institutionId = null): void
     {
-        if (! Schema::hasTable('institution_user')) {
-            return;
-        }
+        $institutionId ??= $this->currentInstitutionId();
 
-        $this->institutions()->detach();
-
-        if ($this->institution_id) {
-            $this->institutions()->attach((int) $this->institution_id);
-        }
+        $this->institutions()->sync($institutionId ? [$institutionId] : []);
     }
 
 }

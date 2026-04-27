@@ -18,8 +18,6 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('identity_number')->nullable()->unique();
             $table->enum('role', ['citizen', 'employee', 'manager', 'admin'])->default('citizen');
-            $table->foreignId('institution_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('department_id')->nullable()->constrained()->nullOnDelete();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

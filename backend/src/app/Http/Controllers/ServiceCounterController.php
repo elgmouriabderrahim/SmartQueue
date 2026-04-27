@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ServiceCounter\StoreServiceCounterRequest;
 use App\Http\Requests\ServiceCounter\UpdateServiceCounterRequest;
+use App\Models\Service;
 use App\Models\ServiceCounter;
 use App\Services\ServiceCounterService;
 use Illuminate\Http\JsonResponse;
@@ -20,10 +21,10 @@ class ServiceCounterController extends Controller
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
 
         $counters = ServiceCounter::query()
-            ->with(['service'])
+            ->with(['services'])
             ->when(
                 $request->user() && in_array($request->user()->role, ['manager', 'employee'], true),
-                fn ($query) => $query->whereHas('service', fn ($serviceQuery) => $serviceQuery->where('institution_id', $request->user()->institution_id))
+                fn ($query) => $query->whereHas('services', fn ($serviceQuery) => $serviceQuery->where('institution_id', $request->user()->institution_id))
             )
             ->latest()
             ->paginate($perPage);
@@ -34,11 +35,13 @@ class ServiceCounterController extends Controller
     public function store(StoreServiceCounterRequest $request): JsonResponse
     {
         $user = $request->user();
+        $serviceIds = $request->input('service_ids', []);
+
         if ($user && in_array($user->role, ['manager', 'employee'], true)) {
-            $belongsToInstitution = \App\Models\Service::query()
-                ->where('id', $request->integer('service_id'))
+            $belongsToInstitution = Service::query()
+                ->whereIn('id', $serviceIds)
                 ->where('institution_id', $user->institution_id)
-                ->exists();
+                ->count() === count($serviceIds);
 
             if (! $belongsToInstitution) {
                 return $this->error('Forbidden.', 403);
@@ -47,7 +50,7 @@ class ServiceCounterController extends Controller
 
         $counter = $this->serviceCounterService->create($request->validated());
 
-        return $this->success($counter->load('service'), 'Service counter created successfully.', 201);
+        return $this->success($counter->load('services'), 'Service counter created successfully.', 201);
     }
 
     public function show(ServiceCounter $serviceCounter): JsonResponse
@@ -56,7 +59,7 @@ class ServiceCounterController extends Controller
             return $response;
         }
 
-        return $this->success($serviceCounter->load(['service', 'appointments']), 'Service counter fetched successfully.');
+        return $this->success($serviceCounter->load(['services', 'appointments']), 'Service counter fetched successfully.');
     }
 
     public function update(UpdateServiceCounterRequest $request, ServiceCounter $serviceCounter): JsonResponse
@@ -67,7 +70,7 @@ class ServiceCounterController extends Controller
 
         $updated = $this->serviceCounterService->update($serviceCounter, $request->validated());
 
-        return $this->success($updated->load('service'), 'Service counter updated successfully.');
+        return $this->success($updated->load('services'), 'Service counter updated successfully.');
     }
 
     public function destroy(ServiceCounter $serviceCounter): JsonResponse
@@ -96,7 +99,7 @@ class ServiceCounterController extends Controller
             return $this->error('Forbidden.', 403);
         }
 
-        $belongsToInstitution = $serviceCounter->service()->where('institution_id', $user->institution_id)->exists();
+        $belongsToInstitution = $serviceCounter->services()->where('institution_id', $user->institution_id)->exists();
         if (! $belongsToInstitution) {
             return $this->error('Forbidden.', 403);
         }

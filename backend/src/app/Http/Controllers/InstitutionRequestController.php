@@ -115,11 +115,9 @@ class InstitutionRequestController extends Controller
 
             $owner->update([
                 'role' => 'manager',
-                'institution_id' => $institution->id,
-                'department_id' => null,
             ]);
 
-            $owner->syncInstitutionMembership();
+            $owner->syncInstitutionMembership($institution->id);
 
             $institutionRequest->update([
                 'status' => 'approved',

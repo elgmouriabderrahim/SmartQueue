@@ -20,7 +20,7 @@ class StoreAppointmentRequest extends FormRequest
             'service_id' => ['required', 'exists:services,id'],
             'service_counter_id' => [
                 'nullable',
-                Rule::exists('service_counters', 'id')->where(function ($query) use ($serviceId) {
+                Rule::exists('service_counter_service', 'service_counter_id')->where(function ($query) use ($serviceId) {
                     if ($serviceId > 0) {
                         $query->where('service_id', $serviceId);
                     }

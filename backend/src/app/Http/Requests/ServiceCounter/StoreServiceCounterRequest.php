@@ -15,14 +15,13 @@ class StoreServiceCounterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'service_id' => ['required', 'exists:services,id'],
+            'service_ids' => ['required', 'array', 'min:1'],
+            'service_ids.*' => ['integer', 'distinct', 'exists:services,id'],
             'counter_number' => [
                 'required',
                 'integer',
                 'min:1',
-                Rule::unique('service_counters', 'counter_number')->where(
-                    fn ($query) => $query->where('service_id', $this->input('service_id'))
-                ),
+                Rule::unique('service_counters', 'counter_number'),
             ],
             'name' => ['required', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in(['available', 'busy', 'offline'])],

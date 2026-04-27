@@ -41,7 +41,8 @@ class Service extends Model
 
     public function counters(): BelongsToMany
     {
-        return $this->belongsToMany(ServiceCounter::class, 'service_counter_service');
+        return $this->belongsToMany(ServiceCounter::class, 'service_counter_service')
+            ->withTimestamps();
     }
 
     public function queues(): HasMany

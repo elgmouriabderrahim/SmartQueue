@@ -24,7 +24,7 @@ class InstitutionStaffController extends Controller
         }
 
         $staff = User::query()
-            ->where('institution_id', $institution->id)
+            ->whereHas('institutions', fn ($query) => $query->whereKey($institution->id))
             ->whereIn('role', ['manager', 'employee'])
             ->latest()
             ->get();
@@ -129,10 +129,8 @@ class InstitutionStaffController extends Controller
         DB::transaction(function () use ($user, $institutionInvitation): void {
             $user->update([
                 'role' => 'employee',
-                'institution_id' => $institutionInvitation->institution_id,
-                'department_id' => null,
             ]);
-            $user->syncInstitutionMembership();
+            $user->syncInstitutionMembership((int) $institutionInvitation->institution_id);
 
             $institutionInvitation->update([
                 'status' => 'accepted',
@@ -189,10 +187,8 @@ class InstitutionStaffController extends Controller
 
         $user->update([
             'role' => 'citizen',
-            'institution_id' => null,
-            'department_id' => null,
         ]);
-        $user->syncInstitutionMembership();
+        $user->syncInstitutionMembership(null);
 
         return $this->success($user->fresh(), 'Employee removed successfully.');
     }
@@ -211,10 +207,8 @@ class InstitutionStaffController extends Controller
         if ($authUser->role === 'employee') {
             $authUser->update([
                 'role' => 'citizen',
-                'institution_id' => null,
-                'department_id' => null,
             ]);
-            $authUser->syncInstitutionMembership();
+            $authUser->syncInstitutionMembership(null);
 
             return $this->success($authUser->fresh(), 'You have left the institution successfully.');
         }
@@ -226,7 +220,7 @@ class InstitutionStaffController extends Controller
 
         $candidate = User::query()
             ->where('id', $newManagerId)
-            ->where('institution_id', $institution->id)
+            ->whereHas('institutions', fn ($query) => $query->whereKey($institution->id))
             ->where('role', 'employee')
             ->first();
 
@@ -241,10 +235,8 @@ class InstitutionStaffController extends Controller
 
             $authUser->update([
                 'role' => 'citizen',
-                'institution_id' => null,
-                'department_id' => null,
             ]);
-            $authUser->syncInstitutionMembership();
+            $authUser->syncInstitutionMembership(null);
         });
 
         $this->notificationService->createForUser($candidate->fresh(), 'system_notification', [
@@ -272,13 +264,13 @@ class InstitutionStaffController extends Controller
         }
 
         $currentManager = User::query()
-            ->where('institution_id', $institution->id)
+            ->whereHas('institutions', fn ($query) => $query->whereKey($institution->id))
             ->where('role', 'manager')
             ->first();
 
         $candidate = User::query()
             ->where('id', $candidateId)
-            ->where('institution_id', $institution->id)
+            ->whereHas('institutions', fn ($query) => $query->whereKey($institution->id))
             ->where('role', 'employee')
             ->first();
 

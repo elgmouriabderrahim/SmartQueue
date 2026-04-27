@@ -28,15 +28,6 @@ class StoreUserRequest extends FormRequest
                 $institutionRequired ? 'required' : 'nullable',
                 'exists:institutions,id',
             ],
-            'department_id' => [
-                'nullable',
-                Rule::exists('departments', 'id')->where(function ($query): void {
-                    $institutionId = (int) $this->input('institution_id');
-                    if ($institutionId > 0) {
-                        $query->where('institution_id', $institutionId);
-                    }
-                }),
-            ],
         ];
     }
 }

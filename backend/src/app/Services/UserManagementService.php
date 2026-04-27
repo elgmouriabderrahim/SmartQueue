@@ -3,14 +3,15 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Arr;
 
 class UserManagementService
 {
     public function create(array $data): User
     {
-        $data = $this->normalizeInstitutionFields($data);
+        $institutionId = $this->resolveInstitutionId($data);
         $user = User::query()->create($data);
-        $user->syncInstitutionMembership();
+        $user->syncInstitutionMembership($institutionId);
 
         return $user;
     }
@@ -21,9 +22,9 @@ class UserManagementService
             unset($data['password']);
         }
 
-        $data = $this->normalizeInstitutionFields($data, $user);
+        $institutionId = $this->resolveInstitutionId($data, $user);
         $user->update($data);
-        $user->syncInstitutionMembership();
+        $user->syncInstitutionMembership($institutionId);
 
         return $user->fresh();
     }
@@ -33,25 +34,19 @@ class UserManagementService
         $user->delete();
     }
 
-    private function normalizeInstitutionFields(array $data, ?User $currentUser = null): array
+    private function resolveInstitutionId(array &$data, ?User $currentUser = null): ?int
     {
         $role = (string) ($data['role'] ?? $currentUser?->role ?? 'citizen');
+        $institutionId = array_key_exists('institution_id', $data)
+            ? (int) $data['institution_id']
+            : $currentUser?->currentInstitutionId();
+
+        Arr::forget($data, ['institution_id']);
 
         if (in_array($role, ['citizen', 'admin'], true)) {
-            $data['institution_id'] = null;
-            $data['department_id'] = null;
-
-            return $data;
+            return null;
         }
 
-        if (! array_key_exists('institution_id', $data) && $currentUser) {
-            $data['institution_id'] = $currentUser->institution_id;
-        }
-
-        if (! array_key_exists('department_id', $data) && $currentUser) {
-            $data['department_id'] = $currentUser->department_id;
-        }
-
-        return $data;
+        return $institutionId > 0 ? $institutionId : null;
     }
 }

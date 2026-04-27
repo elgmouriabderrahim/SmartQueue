@@ -18,9 +18,6 @@ class UpdateUserRequest extends FormRequest
         /** @var User|null $user */
         $user = $this->route('user');
         $role = (string) ($this->input('role') ?? $user?->role ?? 'citizen');
-        $effectiveInstitutionId = $this->filled('institution_id')
-            ? (int) $this->input('institution_id')
-            : (int) ($user?->institution_id ?? 0);
         $institutionRequired = in_array($role, ['employee', 'manager'], true);
 
         return [
@@ -40,15 +37,6 @@ class UpdateUserRequest extends FormRequest
                 $institutionRequired ? 'required' : 'sometimes',
                 'nullable',
                 'exists:institutions,id',
-            ],
-            'department_id' => [
-                'sometimes',
-                'nullable',
-                Rule::exists('departments', 'id')->where(function ($query) use ($effectiveInstitutionId): void {
-                    if ($effectiveInstitutionId > 0) {
-                        $query->where('institution_id', $effectiveInstitutionId);
-                    }
-                }),
             ],
         ];
     }
