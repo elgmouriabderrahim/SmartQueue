@@ -15,7 +15,6 @@ class UpdateRatingRequest extends FormRequest
     {
         return [
             'score' => ['sometimes', 'required', 'integer', 'between:1,5'],
-            'comment' => ['sometimes', 'nullable', 'string'],
         ];
     }
 }

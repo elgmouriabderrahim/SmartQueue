@@ -14,10 +14,10 @@ class StoreRatingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'appointment_id' => ['required', 'exists:appointments,id', 'unique:ratings,appointment_id'],
-            'service_id' => ['required', 'exists:services,id'],
+            'appointment_id' => ['nullable', 'exists:appointments,id'],
+            'service_id' => ['nullable', 'required_without:institution_id', 'exists:services,id'],
+            'institution_id' => ['nullable', 'required_without:service_id', 'exists:institutions,id'],
             'score' => ['required', 'integer', 'between:1,5'],
-            'comment' => ['nullable', 'string'],
         ];
     }
 }
