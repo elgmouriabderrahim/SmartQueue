@@ -10,7 +10,7 @@ import { toApiError } from '@/utils/http'
 const authStore = useAuthStore()
 const router = useRouter()
 const notificationsOpen = ref(false)
-const sidebarOpen = ref(true) // Changed to true by default
+const sidebarOpen = ref(true)
 const notifications = ref<any[]>([])
 const notificationsError = ref('')
 
@@ -23,7 +23,6 @@ const navItems = computed(() => {
       { to: '/app/admin/profile', label: 'Profile' },
       { to: '/app/admin/institution-requests', label: 'Requests' },
       { to: '/app/admin/users', label: 'Users' },
-      { to: '/app/admin/settings', label: 'Settings' },
       { to: '/app/admin/logs', label: 'Logs' },
       { to: '/app/admin/analytics', label: 'Analytics' },
     ]
@@ -50,6 +49,8 @@ const navItems = computed(() => {
       { to: '/app/employee/dashboard', label: 'Dashboard' },
       { to: '/app/employee/appointments', label: 'Appointments' },
       { to: '/app/employee/queues', label: 'Queues' },
+      { to: '/app/employee/service-counters', label: 'Counters' },
+      { to: '/app/employee/queue-entries', label: 'Queue Entries' },
       { to: '/app/employee/messages', label: 'Messages' },
       { to: '/app/employee/profile', label: 'Profile' },
     ]
@@ -58,6 +59,8 @@ const navItems = computed(() => {
   return [
     { to: '/app/citizen/dashboard', label: 'Dashboard' },
     { to: '/app/citizen/appointments', label: 'Appointments' },
+    { to: '/app/citizen/appointments-history', label: 'Appointments History' },
+    { to: '/app/citizen/institution-requests', label: 'Institution Request' },
     { to: '/app/citizen/messages', label: 'Messages' },
     { to: '/app/citizen/notifications', label: 'Alerts' },
     { to: '/app/citizen/profile', label: 'Profile' },
@@ -104,7 +107,7 @@ async function handleLogout() {
 function openProfile(): void {
   const role = authStore.userRole
   if (role === 'admin') router.push('/app/admin/profile')
-  else if (role === 'manager') router.push('/app/manager/settings')
+  else if (role === 'manager') router.push('/app/manager/dashboard')
   else if (role === 'employee') router.push('/app/employee/profile')
   else router.push('/app/citizen/profile')
 }

@@ -8,7 +8,6 @@ import { toApiError } from '@/utils/http'
 const loading = ref(false)
 const error = ref('')
 const institutions = ref<any[]>([])
-const services = ref<any[]>([])
 const ratings = ref<any[]>([])
 
 const filters = reactive({
@@ -33,9 +32,8 @@ const visibleInstitutions = computed(() => {
 })
 
 function institutionStats(institutionId: number): { average: number; count: number; servicesCount: number } {
-  const institutionServices = services.value.filter((service) => Number(service.institution_id) === Number(institutionId))
-  const serviceIds = new Set(institutionServices.map((service) => Number(service.id)))
-  const institutionRatings = ratings.value.filter((rating) => serviceIds.has(Number(rating.service_id)))
+  const institutionServicesCount = Number((institutions.value.find((item) => Number(item.id) === Number(institutionId))?.services?.length) || 0)
+  const institutionRatings = ratings.value.filter((rating) => Number(rating.institution_id) === Number(institutionId))
 
   const count = institutionRatings.length
   const average = count > 0
@@ -45,7 +43,7 @@ function institutionStats(institutionId: number): { average: number; count: numb
   return {
     average,
     count,
-    servicesCount: institutionServices.length,
+    servicesCount: institutionServicesCount,
   }
 }
 
@@ -54,14 +52,12 @@ async function loadData() {
   error.value = ''
 
   try {
-    const [institutionsResponse, servicesResponse, ratingsResponse] = await Promise.all([
+    const [institutionsResponse, ratingsResponse] = await Promise.all([
       smartQueueApi.institutions({ per_page: 100 }),
-      smartQueueApi.services({ per_page: 100 }),
       smartQueueApi.ratings({ per_page: 100 }),
     ])
 
     institutions.value = institutionsResponse.data.data.data || []
-    services.value = servicesResponse.data.data.data || []
     ratings.value = ratingsResponse.data.data.data || []
   } catch (err) {
     error.value = toApiError(err).message
@@ -82,7 +78,7 @@ onMounted(loadData)
         Find The Right Institution
       </h1>
       <p class="mt-4 text-lg text-stone-500 leading-relaxed">
-        Browse institutions by city, compare available services, and review citizen ratings before booking.
+        Browse institutions by city, compare available services, and check institution ratings before booking.
       </p>
     </div>
 
@@ -156,7 +152,7 @@ onMounted(loadData)
               </div>
               <div class="h-3 w-px bg-stone-200" />
               <div class="flex items-center gap-1">
-                <span class="text-stone-400">Reviews</span>
+                <span class="text-stone-400">Ratings</span>
                 <span class="font-medium text-stone-600">{{ institutionStats(Number(institution.id)).count }}</span>
               </div>
             </div>

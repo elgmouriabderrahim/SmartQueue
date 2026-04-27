@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Institution extends Model
@@ -25,26 +26,24 @@ class Institution extends Model
 
     protected $casts = [
         'working_days' => 'array',
+        'opening_time' => 'datetime',
+        'closing_time' => 'datetime',
     ];
-
-    public function departments(): HasMany
-    {
-        return $this->hasMany(Department::class);
-    }
 
     public function services(): HasMany
     {
         return $this->hasMany(Service::class);
     }
 
-    public function users(): HasMany
+    public function users(): BelongsToMany
     {
-        return $this->hasMany(User::class);
+        return $this->belongsToMany(User::class, 'institution_user')
+            ->withTimestamps();
     }
 
-    public function settings(): HasMany
+    public function departments(): HasMany
     {
-        return $this->hasMany(Setting::class);
+        return $this->hasMany(Department::class);
     }
 
     public function analytics(): HasMany
@@ -55,5 +54,20 @@ class Institution extends Model
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(Message::class);
+    }
+
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(InstitutionInvitation::class);
+    }
+
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(Rating::class);
     }
 }

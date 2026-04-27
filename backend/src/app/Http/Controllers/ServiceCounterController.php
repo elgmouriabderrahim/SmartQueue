@@ -34,11 +34,7 @@ class ServiceCounterController extends Controller
     public function store(StoreServiceCounterRequest $request): JsonResponse
     {
         $user = $request->user();
-        if ($user && $user->role === 'employee') {
-            return $this->error('Employees cannot create service counters.', 403);
-        }
-
-        if ($user && $user->role === 'manager') {
+        if ($user && in_array($user->role, ['manager', 'employee'], true)) {
             $belongsToInstitution = \App\Models\Service::query()
                 ->where('id', $request->integer('service_id'))
                 ->where('institution_id', $user->institution_id)
@@ -76,11 +72,6 @@ class ServiceCounterController extends Controller
 
     public function destroy(ServiceCounter $serviceCounter): JsonResponse
     {
-        $user = request()->user();
-        if ($user && $user->role === 'employee') {
-            return $this->error('Employees cannot delete service counters.', 403);
-        }
-
         if ($response = $this->forbidIfNoInstitutionAccess(request(), $serviceCounter)) {
             return $response;
         }

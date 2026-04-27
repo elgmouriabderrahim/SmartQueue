@@ -4,30 +4,19 @@ import { smartQueueApi } from '@/services/smartQueueApi'
 
 const institutions = ref<Array<{ id: number; name: string; city: string; servicesCount: number }>>([])
 
-const fallbackInstitutions = [
-  { id: 1, name: 'Casablanca Civil Center', city: 'Casablanca', servicesCount: 14 },
-  { id: 2, name: 'Rabat Public Services Hub', city: 'Rabat', servicesCount: 11 },
-  { id: 3, name: 'Marrakech Citizen Office', city: 'Marrakech', servicesCount: 9 },
-]
-
 onMounted(async () => {
   try {
-    const [institutionsResponse, servicesResponse] = await Promise.all([
-      smartQueueApi.institutions({ per_page: 6 }),
-      smartQueueApi.services({ per_page: 100 }),
-    ])
-
+    const institutionsResponse = await smartQueueApi.institutions({ per_page: 6 })
     const fetchedInstitutions = institutionsResponse.data.data.data || []
-    const services = servicesResponse.data.data.data || []
 
     institutions.value = fetchedInstitutions.slice(0, 3).map((institution: any) => ({
       id: Number(institution.id),
       name: String(institution.name || 'Institution'),
       city: String(institution.city || 'Morocco'),
-      servicesCount: services.filter((service: any) => Number(service.institution_id) === Number(institution.id)).length,
+      servicesCount: Array.isArray(institution.services) ? institution.services.length : 0,
     }))
   } catch {
-    institutions.value = fallbackInstitutions
+    institutions.value = []
   }
 })
 </script>
@@ -218,9 +207,9 @@ onMounted(async () => {
         </router-link>
       </div>
 
-      <div class="grid gap-6 md:grid-cols-3">
+      <div v-if="institutions.length" class="grid gap-6 md:grid-cols-3">
         <router-link
-          v-for="institution in (institutions.length ? institutions : fallbackInstitutions)"
+          v-for="institution in institutions"
           :key="institution.id"
           :to="`/institutions/${institution.id}`"
           class="group block"
@@ -237,6 +226,7 @@ onMounted(async () => {
           </div>
         </router-link>
       </div>
+      <p v-else class="text-sm text-stone-500">No institutions available yet.</p>
     </div>
 
     <!-- Testimonials -->

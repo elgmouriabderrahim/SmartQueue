@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Service extends Model
@@ -38,9 +39,9 @@ class Service extends Model
         return $this->belongsTo(Department::class);
     }
 
-    public function counters(): HasMany
+    public function counters(): BelongsToMany
     {
-        return $this->hasMany(ServiceCounter::class);
+        return $this->belongsToMany(ServiceCounter::class, 'service_counter_service');
     }
 
     public function queues(): HasMany

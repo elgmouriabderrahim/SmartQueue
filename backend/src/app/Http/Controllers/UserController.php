@@ -54,8 +54,12 @@ class UserController extends Controller
         return $this->success($updated->load(['institution', 'department']), 'User updated successfully.');
     }
 
-    public function destroy(User $user): JsonResponse
+    public function destroy(Request $request, User $user): JsonResponse
     {
+        if ((int) $request->user()?->id === (int) $user->id) {
+            return $this->error('You cannot delete your own account.', 422);
+        }
+
         $this->userManagementService->delete($user);
 
         return $this->success(null, 'User deleted successfully.');

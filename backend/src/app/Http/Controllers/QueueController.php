@@ -57,7 +57,7 @@ class QueueController extends Controller
     public function store(StoreQueueRequest $request): JsonResponse
     {
         $user = $request->user();
-        if ($user && $user->role === 'manager') {
+        if ($user && in_array($user->role, ['manager', 'employee'], true)) {
             $belongsToManagerInstitution = \App\Models\Service::query()
                 ->where('id', $request->integer('service_id'))
                 ->where('institution_id', $user->institution_id)

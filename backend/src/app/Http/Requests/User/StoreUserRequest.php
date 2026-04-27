@@ -14,6 +14,9 @@ class StoreUserRequest extends FormRequest
 
     public function rules(): array
     {
+        $role = (string) $this->input('role', 'citizen');
+        $institutionRequired = in_array($role, ['employee', 'manager'], true);
+
         return [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
@@ -21,8 +24,19 @@ class StoreUserRequest extends FormRequest
             'password' => ['required', 'string', 'min:8'],
             'identity_number' => ['nullable', 'string', 'max:255', 'unique:users,identity_number'],
             'role' => ['sometimes', Rule::in(['citizen', 'employee', 'manager', 'admin'])],
-            'institution_id' => ['nullable', 'exists:institutions,id'],
-            'department_id' => ['nullable', 'exists:departments,id'],
+            'institution_id' => [
+                $institutionRequired ? 'required' : 'nullable',
+                'exists:institutions,id',
+            ],
+            'department_id' => [
+                'nullable',
+                Rule::exists('departments', 'id')->where(function ($query): void {
+                    $institutionId = (int) $this->input('institution_id');
+                    if ($institutionId > 0) {
+                        $query->where('institution_id', $institutionId);
+                    }
+                }),
+            ],
         ];
     }
 }

@@ -16,7 +16,12 @@ class StoreServiceRequest extends FormRequest
     {
         return [
             'institution_id' => ['required', 'exists:institutions,id'],
-            'department_id' => ['nullable', 'exists:departments,id'],
+            'department_id' => [
+                'required',
+                Rule::exists('departments', 'id')->where(
+                    fn ($query) => $query->where('institution_id', $this->integer('institution_id'))
+                ),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'duration' => ['required', 'integer', 'min:1'],

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import EmptyState from '@/components/EmptyState.vue'
 import LoadingState from '@/components/LoadingState.vue'
 import PageHeader from '@/components/PageHeader.vue'
@@ -9,21 +10,15 @@ import { useAuthStore } from '@/stores/auth'
 import { toApiError } from '@/utils/http'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const isCitizen = computed(() => authStore.role === 'citizen')
-const canComplete = computed(() => authStore.role === 'institution')
+const canComplete = computed(() => ['manager', 'employee', 'admin'].includes(String(authStore.userRole || '')))
 const canTrackQueue = computed(() => isCitizen.value)
-
-const countersByService = computed(() => {
-  if (!form.service_id) return []
-  return serviceCounters.value.filter((c: any) => Number(c.service_id) === Number(form.service_id))
-})
 
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
 const appointments = ref<any[]>([])
-const services = ref<any[]>([])
-const serviceCounters = ref<any[]>([])
 
 const queueLoading = ref(false)
 const queueError = ref('')
@@ -32,12 +27,31 @@ const queueInfo = ref<any | null>(null)
 const detailLoading = ref(false)
 const detailError = ref('')
 const appointmentDetail = ref<any | null>(null)
+const showEdit = ref(false)
+const editId = ref<number | null>(null)
 
-const form = reactive({
-  service_id: 0,
-  service_counter_id: 0,
+const editForm = reactive({
   appointment_date: '',
 })
+
+const activeAppointments = computed(() =>
+  appointments.value.filter((a: any) => !['completed', 'cancelled'].includes(String(a.status))),
+)
+
+const visibleAppointments = computed(() => {
+  if (isCitizen.value) {
+    return appointments.value.filter((a: any) => {
+      const status = String(a.status)
+      return status !== 'completed' && status !== 'cancelled'
+    })
+  }
+
+  return activeAppointments.value
+})
+
+const historyAppointments = computed(() =>
+  appointments.value.filter((a: any) => ['completed', 'cancelled'].includes(String(a.status))),
+)
 
 let queuePollTimer: number | null = null
 
@@ -46,15 +60,9 @@ async function loadData() {
   error.value = ''
 
   try {
-    const [appointmentsResponse, servicesResponse, countersResponse] = await Promise.all([
-      smartQueueApi.appointments(),
-      smartQueueApi.services(),
-      smartQueueApi.serviceCounters({ per_page: 100 }),
-    ])
+    const appointmentsResponse = await smartQueueApi.appointments({ per_page: 100 })
 
     appointments.value = appointmentsResponse.data.data.data
-    services.value = servicesResponse.data.data.data
-    serviceCounters.value = countersResponse.data.data.data || []
   } catch (err) {
     error.value = toApiError(err).message
   } finally {
@@ -62,19 +70,36 @@ async function loadData() {
   }
 }
 
-async function createAppointment() {
+function openEdit(appointment: any) {
+  editId.value = Number(appointment.id)
+  const dt = new Date(String(appointment.appointment_date))
+  if (!Number.isNaN(dt.getTime())) {
+    editForm.appointment_date = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16)
+  } else {
+    editForm.appointment_date = ''
+  }
+  showEdit.value = true
+}
+
+function closeEdit() {
+  showEdit.value = false
+  editId.value = null
+  editForm.appointment_date = ''
+}
+
+async function updateAppointment() {
+  if (!editId.value || !editForm.appointment_date) return
+
   saving.value = true
   error.value = ''
 
   try {
-    await smartQueueApi.createAppointment({
-      service_id: Number(form.service_id),
-      service_counter_id: form.service_counter_id ? Number(form.service_counter_id) : null,
-      appointment_date: form.appointment_date,
+    await smartQueueApi.updateAppointment(editId.value, {
+      appointment_date: editForm.appointment_date,
     })
-    form.service_id = 0
-    form.service_counter_id = 0
-    form.appointment_date = ''
+    closeEdit()
     await loadData()
   } catch (err) {
     error.value = toApiError(err).message
@@ -163,59 +188,50 @@ function stopQueuePolling() {
   }
 }
 
+function startMessageFromAppointmentDetail(): void {
+  if (!appointmentDetail.value) return
+
+  const appointmentId = Number(appointmentDetail.value.id || 0)
+  if (appointmentId <= 0) return
+
+  if (isCitizen.value) {
+    const institutionId = Number(appointmentDetail.value.service?.institution_id || 0)
+    if (institutionId > 0) {
+      router.push({
+        path: '/app/citizen/messages',
+        query: {
+          institution_id: String(institutionId),
+          appointment_id: String(appointmentId),
+        },
+      })
+    }
+    return
+  }
+
+  const recipientId = Number(appointmentDetail.value.user?.id || appointmentDetail.value.user_id || 0)
+  if (recipientId > 0) {
+    router.push({
+      path: '/app/employee/messages',
+      query: {
+        recipient_id: String(recipientId),
+        appointment_id: String(appointmentId),
+      },
+    })
+  }
+}
+
 onMounted(loadData)
 onUnmounted(stopQueuePolling)
 </script>
 
 <template>
   <div class="space-y-8">
-    <PageHeader title="Appointments" subtitle="Create, track, and manage appointments with live queue info." />
+    <PageHeader title="My Appointments" subtitle="Track and manage your active appointments." />
 
-    <!-- Book Appointment Form (Citizen only) -->
-    <div v-if="isCitizen" class="rounded-2xl bg-white/40 backdrop-blur-sm border border-stone-100 p-5">
-      <h2 class="text-xs font-semibold uppercase tracking-wider text-stone-500">Book Appointment</h2>
-      <p class="mt-1 text-sm text-stone-400">Schedule a new appointment for a service</p>
-      
-      <form class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3" @submit.prevent="createAppointment">
-        <div>
-          <label class="block text-xs font-medium text-stone-500 mb-1">Service *</label>
-          <select v-model.number="form.service_id" required class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300">
-            <option :value="0" disabled>-- Select service --</option>
-            <option v-for="service in services" :key="Number(service.id)" :value="Number(service.id)">
-              {{ service.name }}
-            </option>
-          </select>
-        </div>
-
-        <div v-if="countersByService.length > 0">
-          <label class="block text-xs font-medium text-stone-500 mb-1">Preferred Counter (optional)</label>
-          <select v-model.number="form.service_counter_id" class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300">
-            <option :value="0">-- Any available --</option>
-            <option v-for="counter in countersByService" :key="Number(counter.id)" :value="Number(counter.id)">
-              {{ counter.name }} (Counter #{{ counter.counter_number }})
-            </option>
-          </select>
-        </div>
-
-        <div :class="{ 'md:col-span-3': !countersByService.length, 'md:col-span-1': countersByService.length }">
-          <label class="block text-xs font-medium text-stone-500 mb-1">Appointment Date & Time *</label>
-          <input 
-            v-model="form.appointment_date" 
-            type="datetime-local" 
-            required 
-            class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300"
-          />
-        </div>
-
-        <IconButton 
-          icon="calendar"
-          label="Book Appointment"
-          variant="primary"
-          type="submit"
-          :disabled="saving || !form.service_id"
-          :class="{ 'md:col-span-3': !countersByService.length, 'md:col-span-1': countersByService.length }"
-        />
-      </form>
+    <div v-if="isCitizen" class="rounded-2xl border border-stone-100 bg-white/40 p-4 text-sm text-stone-500">
+      Book new appointments from institution or service pages only.
+      <router-link to="/services" class="ml-2 font-medium text-stone-700 hover:text-stone-900">Browse services</router-link>
+      <router-link to="/app/citizen/appointments-history" class="ml-3 font-medium text-stone-700 hover:text-stone-900">Appointments history</router-link>
     </div>
 
     <!-- Loading & Error -->
@@ -223,12 +239,17 @@ onUnmounted(stopQueuePolling)
     <p v-else-if="error" class="text-sm text-rose-500">{{ error }}</p>
 
     <!-- Empty State -->
-    <EmptyState v-else-if="appointments.length === 0" message="No appointments yet." />
+    <div v-else-if="isCitizen && visibleAppointments.length === 0" class="rounded-2xl border border-stone-100 bg-white/40 p-6">
+      <p class="text-sm text-stone-500">No booked appointments.</p>
+      <router-link to="/services" class="mt-2 inline-block text-sm font-medium text-stone-700 hover:text-stone-900">Browse services</router-link>
+    </div>
+    <EmptyState v-else-if="appointments.length === 0" message="No appointments yet." icon="none" />
 
     <!-- Main Grid: Table + Sidebar -->
     <div v-else class="grid gap-6 lg:grid-cols-[minmax(0,1fr),320px]">
       <!-- Appointments Table -->
       <div class="border border-stone-100 rounded-2xl overflow-hidden bg-white/40 backdrop-blur-sm">
+        <div class="px-5 py-3 border-b border-stone-100 text-xs font-semibold uppercase tracking-wider text-stone-500">{{ isCitizen ? 'Appointments' : 'Active Appointments' }}</div>
         <div class="overflow-x-auto">
           <table class="w-full text-left">
             <thead class="border-b border-stone-100">
@@ -242,7 +263,7 @@ onUnmounted(stopQueuePolling)
               </tr>
             </thead>
             <tbody class="divide-y divide-stone-50">
-              <tr v-for="appointment in appointments" :key="Number(appointment.id)" class="hover:bg-stone-50/30 transition-colors">
+              <tr v-for="appointment in visibleAppointments" :key="Number(appointment.id)" class="hover:bg-stone-50/30 transition-colors">
                 <td class="px-5 py-3 text-sm font-mono text-stone-600">{{ appointment.reference_code || '-' }}</td>
                 <td class="px-5 py-3 text-sm text-stone-700">{{ appointment.service?.name || appointment.service_id }}</td>
                 <td class="px-5 py-3 text-sm text-stone-500">{{ appointment.appointment_date }}</td>
@@ -277,6 +298,13 @@ onUnmounted(stopQueuePolling)
                       variant="ghost"
                       @click="fetchAppointmentDetail(Number(appointment.id))"
                     />
+                    <IconButton
+                      v-if="isCitizen && ['pending', 'confirmed'].includes(String(appointment.status))"
+                      icon="edit"
+                      size="sm"
+                      variant="ghost"
+                      @click="openEdit(appointment)"
+                    />
                     <IconButton 
                       v-if="isCitizen" 
                       icon="delete"
@@ -293,6 +321,34 @@ onUnmounted(stopQueuePolling)
                     />
                   </div>
                 </td>
+              </tr>
+              <tr v-if="visibleAppointments.length === 0">
+                <td colspan="6" class="px-5 py-6 text-sm text-stone-400">No active appointments.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="!isCitizen" class="px-5 py-3 border-y border-stone-100 text-xs font-semibold uppercase tracking-wider text-stone-500">Appointment History</div>
+        <div v-if="!isCitizen" class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead class="border-b border-stone-100">
+              <tr>
+                <th class="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">Reference</th>
+                <th class="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">Service</th>
+                <th class="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">Date</th>
+                <th class="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-50">
+              <tr v-for="appointment in historyAppointments" :key="`h-${Number(appointment.id)}`" class="hover:bg-stone-50/30 transition-colors">
+                <td class="px-5 py-3 text-sm font-mono text-stone-600">{{ appointment.reference_code || '-' }}</td>
+                <td class="px-5 py-3 text-sm text-stone-700">{{ appointment.service?.name || appointment.service_id }}</td>
+                <td class="px-5 py-3 text-sm text-stone-500">{{ appointment.appointment_date }}</td>
+                <td class="px-5 py-3 text-sm text-stone-600">{{ appointment.status }}</td>
+              </tr>
+              <tr v-if="historyAppointments.length === 0">
+                <td colspan="4" class="px-5 py-6 text-sm text-stone-400">No appointment history yet.</td>
               </tr>
             </tbody>
           </table>
@@ -340,7 +396,16 @@ onUnmounted(stopQueuePolling)
 
         <!-- Appointment Detail -->
         <div class="border border-stone-100 rounded-2xl bg-white/40 backdrop-blur-sm p-5">
-          <p class="text-xs font-semibold uppercase tracking-wider text-stone-500 mb-4">Appointment Detail</p>
+          <div class="mb-4 flex items-center justify-between">
+            <p class="text-xs font-semibold uppercase tracking-wider text-stone-500">Appointment Detail</p>
+            <IconButton
+              v-if="appointmentDetail"
+              icon="message"
+              size="sm"
+              variant="ghost"
+              @click="startMessageFromAppointmentDetail"
+            />
+          </div>
           
           <p v-if="detailLoading" class="text-sm text-stone-400">Loading detail...</p>
           <p v-else-if="detailError" class="text-sm text-rose-500">{{ detailError }}</p>
@@ -369,6 +434,30 @@ onUnmounted(stopQueuePolling)
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div v-if="showEdit" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm" @click.self="closeEdit">
+      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-light tracking-tight text-stone-800">Update Appointment</h3>
+        <p class="mt-1 text-sm text-stone-500">Change your appointment date and time.</p>
+
+        <form class="mt-4 space-y-4" @submit.prevent="updateAppointment">
+          <div>
+            <label class="block text-xs font-medium text-stone-500 mb-1">Appointment Date & Time</label>
+            <input
+              v-model="editForm.appointment_date"
+              type="datetime-local"
+              required
+              class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300"
+            />
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <IconButton icon="close" label="Cancel" variant="ghost" type="button" @click="closeEdit" />
+            <IconButton icon="save" label="Save" variant="primary" type="submit" :disabled="saving" />
+          </div>
+        </form>
       </div>
     </div>
   </div>

@@ -62,10 +62,14 @@ async function createService() {
   error.value = ''
 
   try {
+    if (!form.department_id) {
+      throw new Error('Please select a department for this service.')
+    }
+
     await smartQueueApi.createService({
       ...form,
       institution_id: Number(form.institution_id),
-      department_id: form.department_id ? Number(form.department_id) : null,
+      department_id: Number(form.department_id),
       duration: Number(form.duration),
       capacity: Number(form.capacity),
       working_days: form.working_days.split(',').map((day) => day.trim()).filter(Boolean),
@@ -101,14 +105,15 @@ onMounted(loadData)
           </select>
         </div>
 
-        <div v-if="departmentsByInstitution.length > 0" class="md:col-span-2">
-          <label class="block text-xs font-medium text-stone-500 mb-1">Department (optional)</label>
-          <select v-model.number="form.department_id" class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300">
-            <option :value="">-- Select a department --</option>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-medium text-stone-500 mb-1">Department *</label>
+          <select v-model.number="form.department_id" required :disabled="departmentsByInstitution.length === 0" class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300">
+            <option value="" disabled>Select department</option>
             <option v-for="dept in departmentsByInstitution" :key="Number(dept.id)" :value="Number(dept.id)">
               {{ dept.name }}
             </option>
           </select>
+          <p v-if="departmentsByInstitution.length === 0" class="mt-1 text-xs text-stone-400">No departments available for this institution. Create a department first.</p>
         </div>
 
         <div>
@@ -192,7 +197,7 @@ onMounted(loadData)
           label="Create Service"
           variant="primary"
           type="submit"
-          :disabled="saving"
+          :disabled="saving || departmentsByInstitution.length === 0"
           class="md:col-span-2"
         />
       </form>
