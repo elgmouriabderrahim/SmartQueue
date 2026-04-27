@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Institution\InviteInstitutionEmployeeRequest;
 use App\Models\Institution;
+use App\Models\InstitutionInvitation;
 use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
@@ -48,17 +49,128 @@ class InstitutionStaffController extends Controller
             return $this->error('Only citizens can be invited as employees.', 422);
         }
 
-        $candidate->update([
-            'role' => 'employee',
-            'institution_id' => $institution->id,
-        ]);
+        if ($candidate->currentInstitutionId()) {
+            return $this->error('User already belongs to an institution.', 422);
+        }
+
+        $invitation = InstitutionInvitation::query()->updateOrCreate(
+            [
+                'institution_id' => $institution->id,
+                'email' => $candidate->email,
+                'status' => 'pending',
+            ],
+            [
+                'user_id' => $candidate->id,
+                'invited_by' => $authUser?->id,
+                'responded_at' => null,
+            ]
+        );
 
         $this->notificationService->createForUser($candidate, 'system_notification', [
-            'title' => 'You are now an employee',
-            'message' => 'You were invited to join '.$institution->name.' as an employee.',
+            'title' => 'Institution invitation',
+            'message' => 'You have been invited to join '.$institution->name.'. Please accept the invitation from your dashboard.',
         ]);
 
-        return $this->success($candidate->fresh(), 'Employee invited successfully.');
+        return $this->success($invitation->load(['institution', 'user']), 'Invitation sent successfully.');
+    }
+
+    public function invitations(Request $request, Institution $institution): JsonResponse
+    {
+        if ($response = $this->forbidIfNoInstitutionAccess($request, $institution)) {
+            return $response;
+        }
+
+        $invitations = InstitutionInvitation::query()
+            ->with(['user', 'invitedBy'])
+            ->where('institution_id', $institution->id)
+            ->where('status', 'pending')
+            ->latest()
+            ->get();
+
+        return $this->success($invitations, 'Institution invitations fetched successfully.');
+    }
+
+    public function myInvitations(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return $this->error('Unauthenticated.', 401);
+        }
+
+        $invitations = InstitutionInvitation::query()
+            ->with(['institution', 'invitedBy'])
+            ->where('email', $user->email)
+            ->where('status', 'pending')
+            ->latest()
+            ->get();
+
+        return $this->success($invitations, 'My invitations fetched successfully.');
+    }
+
+    public function acceptInvitation(Request $request, InstitutionInvitation $institutionInvitation): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return $this->error('Unauthenticated.', 401);
+        }
+
+        if (strtolower((string) $user->email) !== strtolower((string) $institutionInvitation->email)) {
+            return $this->error('This invitation was sent to a different email.', 403);
+        }
+
+        if ($institutionInvitation->status !== 'pending') {
+            return $this->error('This invitation is no longer pending.', 422);
+        }
+
+        if ($user->currentInstitutionId()) {
+            return $this->error('User already belongs to an institution.', 422);
+        }
+
+        DB::transaction(function () use ($user, $institutionInvitation): void {
+            $user->update([
+                'role' => 'employee',
+                'institution_id' => $institutionInvitation->institution_id,
+                'department_id' => null,
+            ]);
+            $user->syncInstitutionMembership();
+
+            $institutionInvitation->update([
+                'status' => 'accepted',
+                'user_id' => $user->id,
+                'responded_at' => now(),
+            ]);
+        });
+
+        $this->notificationService->createForUser($user, 'system_notification', [
+            'title' => 'Invitation accepted',
+            'message' => 'You have joined '.$institutionInvitation->institution->name.' as an employee.',
+        ]);
+
+        return $this->success($user->fresh(), 'Invitation accepted successfully.');
+    }
+
+    public function rejectInvitation(Request $request, InstitutionInvitation $institutionInvitation): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return $this->error('Unauthenticated.', 401);
+        }
+
+        if (strtolower((string) $user->email) !== strtolower((string) $institutionInvitation->email)) {
+            return $this->error('This invitation was sent to a different email.', 403);
+        }
+
+        if ($institutionInvitation->status !== 'pending') {
+            return $this->error('This invitation is no longer pending.', 422);
+        }
+
+        $institutionInvitation->update([
+            'status' => 'rejected',
+            'user_id' => $user->id,
+            'responded_at' => now(),
+        ]);
+
+        return $this->success($institutionInvitation->fresh(['institution', 'user']), 'Invitation rejected successfully.');
     }
 
     public function remove(Request $request, Institution $institution, User $user): JsonResponse
@@ -67,7 +179,7 @@ class InstitutionStaffController extends Controller
             return $response;
         }
 
-        if ($user->institution_id !== $institution->id || $user->role === 'admin') {
+        if ($user->currentInstitutionId() !== (int) $institution->id || $user->role === 'admin') {
             return $this->error('User does not belong to this institution staff.', 422);
         }
 
@@ -80,6 +192,7 @@ class InstitutionStaffController extends Controller
             'institution_id' => null,
             'department_id' => null,
         ]);
+        $user->syncInstitutionMembership();
 
         return $this->success($user->fresh(), 'Employee removed successfully.');
     }
@@ -91,7 +204,7 @@ class InstitutionStaffController extends Controller
             return $this->error('Unauthenticated.', 401);
         }
 
-        if ($authUser->institution_id !== $institution->id || ! in_array($authUser->role, ['manager', 'employee'], true)) {
+        if ($authUser->currentInstitutionId() !== (int) $institution->id || ! in_array($authUser->role, ['manager', 'employee'], true)) {
             return $this->error('Forbidden.', 403);
         }
 
@@ -101,6 +214,7 @@ class InstitutionStaffController extends Controller
                 'institution_id' => null,
                 'department_id' => null,
             ]);
+            $authUser->syncInstitutionMembership();
 
             return $this->success($authUser->fresh(), 'You have left the institution successfully.');
         }
@@ -130,6 +244,7 @@ class InstitutionStaffController extends Controller
                 'institution_id' => null,
                 'department_id' => null,
             ]);
+            $authUser->syncInstitutionMembership();
         });
 
         $this->notificationService->createForUser($candidate->fresh(), 'system_notification', [
@@ -147,7 +262,7 @@ class InstitutionStaffController extends Controller
             return $this->error('Unauthenticated.', 401);
         }
 
-        if ($authUser->role === 'manager' && $authUser->institution_id !== $institution->id) {
+        if ($authUser->role === 'manager' && $authUser->currentInstitutionId() !== (int) $institution->id) {
             return $this->error('Forbidden.', 403);
         }
 
@@ -196,7 +311,7 @@ class InstitutionStaffController extends Controller
             return null;
         }
 
-        if (! in_array($user->role, ['manager', 'employee'], true) || $user->institution_id !== $institution->id) {
+        if (! in_array($user->role, ['manager', 'employee'], true) || $user->currentInstitutionId() !== (int) $institution->id) {
             return $this->error('Forbidden.', 403);
         }
 
