@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Middleware\EnsureRole;
+use App\Support\ApiResponse;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,5 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (\Illuminate\Foundation\Configuration\Exceptions $exceptions): void {
-        // Exception handling is centralized in App\Exceptions\Handler
+        $exceptions->render(function (AuthenticationException $exception, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return ApiResponse::unauthorized('Unauthenticated.');
+            }
+
+            return null;
+        });
     })->create();
