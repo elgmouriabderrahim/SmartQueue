@@ -13,6 +13,7 @@ class Message extends Model
     protected $fillable = [
         'sender_id',
         'recipient_id',
+        'institution_id',
         'appointment_id',
         'content',
         'status',
@@ -26,6 +27,11 @@ class Message extends Model
     public function recipient(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recipient_id');
+    }
+
+    public function institution(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class);
     }
 
     public function appointment(): BelongsTo
