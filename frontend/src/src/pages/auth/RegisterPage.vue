@@ -1,12 +1,33 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getHomeByRole } from '@/utils/roles'
 import { toApiError } from '@/utils/http'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
+
+function isAllowedRedirectPath(path: string): boolean {
+  return (
+    path.startsWith('/app/citizen/') ||
+    path === '/services' ||
+    path.startsWith('/services/') ||
+    path === '/institutions' ||
+    path.startsWith('/institutions/')
+  )
+}
+
+const redirectTarget = computed(() => {
+  const value = route.query.redirect
+  if (typeof value !== 'string' || value.length === 0) {
+    return null
+  }
+
+  return isAllowedRedirectPath(value) ? value : null
+})
 
 const form = reactive({
   first_name: '',
@@ -26,7 +47,7 @@ async function submit() {
 
   try {
     await authStore.register(form)
-    await router.replace(getHomeByRole(authStore.user))
+    await router.replace(redirectTarget.value || getHomeByRole(authStore.user))
   } catch (error) {
     errorMessage.value = toApiError(error).message
   } finally {
@@ -147,7 +168,7 @@ async function submit() {
 
     <p class="text-center text-sm text-gray-500">
       Already have an account?
-      <router-link to="/auth/login" class="font-bold text-gray-900 hover:text-amber-600 transition-colors duration-200 underline decoration-2 decoration-transparent hover:decoration-amber-600 underline-offset-2">
+      <router-link :to="redirectTarget ? { path: '/auth/login', query: { redirect: redirectTarget } } : '/auth/login'" class="font-bold text-gray-900 hover:text-amber-600 transition-colors duration-200 underline decoration-2 decoration-transparent hover:decoration-amber-600 underline-offset-2">
         Sign in
       </router-link>
     </p>

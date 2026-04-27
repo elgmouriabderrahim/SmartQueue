@@ -78,7 +78,7 @@ onMounted(loadData)
         Explore Available Services
       </h1>
       <p class="mt-4 text-lg text-stone-500 leading-relaxed">
-        Compare service duration, capacity, and citizen ratings before choosing an appointment.
+        Compare service duration, capacity, and ratings before choosing an appointment.
       </p>
     </div>
 

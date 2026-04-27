@@ -17,19 +17,37 @@ const saving = ref(false)
 const deletingId = ref<number | null>(null)
 const error = ref('')
 const services = ref<any[]>([])
+const departments = ref<any[]>([])
 const editId = ref<number | null>(null)
 const showForm = ref(false)
 
 const form = reactive({
+  department_id: 0,
   name: '',
   description: '',
   duration: 15,
+  capacity: 20,
+  opening_time: '08:00',
+  closing_time: '16:00',
+  working_days: 'monday,tuesday,wednesday,thursday,friday',
+  status: 'active',
+})
+
+const institutionDepartments = computed(() => {
+  if (!institutionId.value) return []
+  return departments.value.filter((item: any) => Number(item.institution_id) === institutionId.value)
 })
 
 function resetForm(): void {
+  form.department_id = 0
   form.name = ''
   form.description = ''
   form.duration = 15
+  form.capacity = 20
+  form.opening_time = '08:00'
+  form.closing_time = '16:00'
+  form.working_days = 'monday,tuesday,wednesday,thursday,friday'
+  form.status = 'active'
   editId.value = null
 }
 
@@ -40,9 +58,17 @@ function openCreate(): void {
 
 function openEdit(service: any): void {
   editId.value = Number(service.id)
+  form.department_id = Number(service.department_id || 0)
   form.name = String(service.name || '')
   form.description = String(service.description || '')
   form.duration = Number(service.duration || 15)
+  form.capacity = Number(service.capacity || 20)
+  form.opening_time = String(service.opening_time || '08:00')
+  form.closing_time = String(service.closing_time || '16:00')
+  form.working_days = Array.isArray(service.working_days)
+    ? service.working_days.join(',')
+    : String(service.working_days || 'monday,tuesday,wednesday,thursday,friday')
+  form.status = String(service.status || 'active')
   showForm.value = true
 }
 
@@ -56,8 +82,12 @@ async function loadServices(): Promise<void> {
   error.value = ''
 
   try {
-    const response = await smartQueueApi.services({ per_page: 100 })
-    const all = response.data.data.data || []
+    const [servicesResponse, departmentsResponse] = await Promise.all([
+      smartQueueApi.services({ per_page: 100 }),
+      smartQueueApi.departments({ per_page: 100 }),
+    ])
+    const all = servicesResponse.data.data.data || []
+    departments.value = departmentsResponse.data.data.data || []
     services.value = all.filter((item: any) => Number(item.institution_id) === institutionId.value)
   } catch (err) {
     error.value = toApiError(err).message
@@ -75,11 +105,21 @@ async function saveService(): Promise<void> {
   error.value = ''
 
   try {
+    if (!form.department_id) {
+      throw new Error('Please select a department for this service.')
+    }
+
     const payload = {
       institution_id: institutionId.value,
+      department_id: Number(form.department_id),
       name: form.name,
       description: form.description,
       duration: Number(form.duration),
+      capacity: Number(form.capacity),
+      opening_time: form.opening_time,
+      closing_time: form.closing_time,
+      working_days: form.working_days.split(',').map((day) => day.trim()).filter(Boolean),
+      status: form.status,
     }
 
     if (editId.value) {
@@ -199,6 +239,24 @@ onMounted(loadServices)
     <BaseModal :open="showForm" :title="editId ? 'Update Service' : 'Create Service'" @close="showForm = false">
       <form class="space-y-4" @submit.prevent="saveService">
         <div>
+          <label class="block text-xs font-medium text-stone-500 mb-1">Department</label>
+          <select
+            v-model.number="form.department_id"
+            required
+            :disabled="institutionDepartments.length === 0"
+            class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300"
+          >
+            <option :value="0" disabled>Select department</option>
+            <option v-for="department in institutionDepartments" :key="Number(department.id)" :value="Number(department.id)">
+              {{ department.name }}
+            </option>
+          </select>
+          <p v-if="institutionDepartments.length === 0" class="mt-1 text-xs text-stone-400">
+            Create a department first before creating a service.
+          </p>
+        </div>
+
+        <div>
           <label class="block text-xs font-medium text-stone-500 mb-1">Service Name</label>
           <input 
             v-model="form.name" 
@@ -231,6 +289,60 @@ onMounted(loadServices)
           />
         </div>
 
+        <div>
+          <label class="block text-xs font-medium text-stone-500 mb-1">Capacity</label>
+          <input
+            v-model.number="form.capacity"
+            type="number"
+            min="1"
+            required
+            class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300"
+            placeholder="Daily capacity"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label class="block text-xs font-medium text-stone-500 mb-1">Opening Time</label>
+            <input
+              v-model="form.opening_time"
+              type="time"
+              required
+              class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-stone-500 mb-1">Closing Time</label>
+            <input
+              v-model="form.closing_time"
+              type="time"
+              required
+              class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-stone-500 mb-1">Working Days</label>
+          <input
+            v-model="form.working_days"
+            required
+            placeholder="monday,tuesday,wednesday,thursday,friday"
+            class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-stone-500 mb-1">Status</label>
+          <select
+            v-model="form.status"
+            class="w-full rounded-full border border-stone-200 px-4 py-2 text-sm bg-white/60 focus:outline-none focus:border-stone-300"
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+
         <div class="flex justify-end gap-3 pt-2">
           <button 
             type="button" 
@@ -241,7 +353,7 @@ onMounted(loadServices)
           </button>
           <button 
             type="submit" 
-            :disabled="saving" 
+            :disabled="saving || institutionDepartments.length === 0" 
             class="rounded-full bg-stone-800 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-stone-700 hover:-translate-y-0.5 disabled:opacity-50"
           >
             {{ saving ? 'Saving...' : 'Save Service' }}

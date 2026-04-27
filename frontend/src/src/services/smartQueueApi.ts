@@ -55,8 +55,20 @@ export const smartQueueApi = {
     return apiClient.patch<ApiEnvelope<AnyRecord>>(`/institution-requests/${id}/reject`, payload)
   },
 
+  cancelInstitutionRequest(id: number) {
+    return apiClient.patch<ApiEnvelope<AnyRecord>>(`/institution-requests/${id}/cancel`)
+  },
+
   institutionStaff(institutionId: number) {
     return apiClient.get<ApiEnvelope<AnyRecord[]>>(`/institutions/${institutionId}/staff`)
+  },
+
+  institutionStaffInvitations(institutionId: number) {
+    return apiClient.get<ApiEnvelope<AnyRecord[]>>(`/institutions/${institutionId}/staff/invitations`)
+  },
+
+  myInstitutionInvitations() {
+    return apiClient.get<ApiEnvelope<AnyRecord[]>>('/institution-invitations/me')
   },
 
   inviteInstitutionEmployee(institutionId: number, payload: { email: string }) {
@@ -73,6 +85,14 @@ export const smartQueueApi = {
 
   transferInstitutionManager(institutionId: number, payload: { new_manager_user_id: number }) {
     return apiClient.post<ApiEnvelope<AnyRecord>>(`/institutions/${institutionId}/staff/transfer-manager`, payload)
+  },
+
+  acceptInstitutionInvitation(id: number) {
+    return apiClient.patch<ApiEnvelope<AnyRecord>>(`/institution-invitations/${id}/accept`)
+  },
+
+  rejectInstitutionInvitation(id: number) {
+    return apiClient.patch<ApiEnvelope<AnyRecord>>(`/institution-invitations/${id}/reject`)
   },
 
   logout() {
@@ -252,7 +272,7 @@ export const smartQueueApi = {
     return apiClient.delete<ApiEnvelope<null>>(`/messages/${id}`)
   },
 
-  ratings(params?: { per_page?: number; page?: number }) {
+  ratings(params?: { per_page?: number; page?: number; service_id?: number; institution_id?: number; mine?: boolean }) {
     return apiClient.get<ApiEnvelope<Paginated<AnyRecord>>>('/ratings', { params })
   },
 
@@ -261,10 +281,10 @@ export const smartQueueApi = {
   },
 
   createRating(payload: {
-    appointment_id: number
-    service_id: number
+    appointment_id?: number
+    service_id?: number
+    institution_id?: number
     score: number
-    comment?: string
   }) {
     return apiClient.post<ApiEnvelope<AnyRecord>>('/ratings', payload)
   },
@@ -335,25 +355,5 @@ export const smartQueueApi = {
 
   deleteQueueEntry(id: number) {
     return apiClient.delete<ApiEnvelope<null>>(`/queue-entries/${id}`)
-  },
-
-  settings(params?: { per_page?: number; page?: number }) {
-    return apiClient.get<ApiEnvelope<Paginated<AnyRecord>>>('/settings', { params })
-  },
-
-  setting(id: number) {
-    return apiClient.get<ApiEnvelope<AnyRecord>>(`/settings/${id}`)
-  },
-
-  createSetting(payload: AnyRecord) {
-    return apiClient.post<ApiEnvelope<AnyRecord>>('/settings', payload)
-  },
-
-  updateSetting(id: number, payload: AnyRecord) {
-    return apiClient.put<ApiEnvelope<AnyRecord>>(`/settings/${id}`, payload)
-  },
-
-  deleteSetting(id: number) {
-    return apiClient.delete<ApiEnvelope<null>>(`/settings/${id}`)
   },
 }

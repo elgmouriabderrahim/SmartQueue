@@ -14,6 +14,9 @@ const error = ref('')
 const inviteEmail = ref('')
 const newManagerUserId = ref<number | null>(null)
 const staff = ref<any[]>([])
+const invitations = ref<any[]>([])
+
+const pendingInvitations = computed(() => invitations.value.filter((item) => item.status === 'pending'))
 
 const removableEmployees = computed(() =>
   staff.value.filter((member) => member.role === 'employee' && Number(member.id) !== Number(authStore.user?.id)),
@@ -29,8 +32,13 @@ async function loadEmployees(): Promise<void> {
   error.value = ''
 
   try {
-    const response = await smartQueueApi.institutionStaff(institutionId.value)
-    staff.value = response.data.data || []
+    const [staffResponse, invitationsResponse] = await Promise.all([
+      smartQueueApi.institutionStaff(institutionId.value),
+      smartQueueApi.institutionStaffInvitations(institutionId.value),
+    ])
+
+    staff.value = staffResponse.data.data || []
+    invitations.value = invitationsResponse.data.data || []
   } catch (err) {
     error.value = toApiError(err).message
   } finally {
@@ -109,7 +117,7 @@ onMounted(loadEmployees)
     <!-- Invite Employee Form -->
     <div class="rounded-2xl bg-white/40 backdrop-blur-sm border border-stone-100 p-5">
       <h2 class="text-xs font-semibold uppercase tracking-wider text-stone-500">Invite Employee</h2>
-      <p class="mt-1 text-sm text-stone-400">Send an invitation to join your institution</p>
+      <p class="mt-1 text-sm text-stone-400">Send a pending invitation. The user must accept it from their dashboard.</p>
       
       <form class="mt-4 flex flex-col gap-3 sm:flex-row" @submit.prevent="inviteEmployee">
         <input 
@@ -200,6 +208,23 @@ onMounted(loadEmployees)
         </button>
       </div>
       <p class="mt-3 text-xs text-stone-400">Manager must assign a new manager before leaving.</p>
+    </div>
+
+    <div class="rounded-2xl bg-white/40 backdrop-blur-sm border border-stone-100 p-5">
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-stone-500">Pending Invitations</h2>
+      <p class="mt-1 text-sm text-stone-400">Invited users still need to accept before becoming employees.</p>
+
+      <div v-if="pendingInvitations.length === 0" class="mt-4 text-sm text-stone-400">No pending invitations.</div>
+      <ul v-else class="mt-4 space-y-3">
+        <li v-for="item in pendingInvitations" :key="Number(item.id)" class="rounded-xl border border-stone-100 bg-white/60 p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="font-medium text-stone-800">{{ item.email }}</p>
+              <p class="text-xs text-stone-400">Status: {{ item.status }}</p>
+            </div>
+          </div>
+        </li>
+      </ul>
     </div>
   </div>
 </template>

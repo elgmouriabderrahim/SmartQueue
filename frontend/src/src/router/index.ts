@@ -42,13 +42,17 @@ const router = createRouter({
         { path: 'citizen/dashboard', name: 'citizen-dashboard', component: () => import('@/pages/citizen/DashboardPage.vue'), meta: { roles: ['citizen'] } },
         { path: 'citizen/profile', name: 'citizen-profile', component: () => import('@/pages/citizen/ProfilePage.vue'), meta: { roles: ['citizen'] } },
         { path: 'citizen/appointments', name: 'citizen-appointments', component: () => import('@/pages/citizen/AppointmentsPage.vue'), meta: { roles: ['citizen'] } },
+        { path: 'citizen/appointments-history', name: 'citizen-appointments-history', component: () => import('@/pages/citizen/AppointmentsHistoryPage.vue'), meta: { roles: ['citizen'] } },
         { path: 'citizen/messages', name: 'citizen-messages', component: () => import('@/pages/citizen/MessagesPage.vue'), meta: { roles: ['citizen'] } },
         { path: 'citizen/notifications', name: 'citizen-notifications', component: () => import('@/pages/citizen/NotificationsPage.vue'), meta: { roles: ['citizen'] } },
+        { path: 'citizen/institution-requests', name: 'citizen-institution-requests', component: () => import('@/pages/citizen/InstitutionRequestsPage.vue'), meta: { roles: ['citizen'] } },
 
         { path: 'employee/dashboard', name: 'employee-dashboard', component: () => import('@/pages/employee/DashboardPage.vue'), meta: { roles: ['employee', 'manager'] } },
         { path: 'employee/profile', name: 'employee-profile', component: () => import('@/pages/employee/ProfilePage.vue'), meta: { roles: ['employee', 'manager'] } },
         { path: 'employee/appointments', name: 'employee-appointments', component: () => import('@/pages/employee/AppointmentsPage.vue'), meta: { roles: ['employee', 'manager'] } },
         { path: 'employee/queues', name: 'employee-queues', component: () => import('@/pages/employee/QueuesPage.vue'), meta: { roles: ['employee', 'manager'] } },
+        { path: 'employee/service-counters', name: 'employee-service-counters', component: () => import('@/pages/employee/ServiceCountersPage.vue'), meta: { roles: ['employee', 'manager'] } },
+        { path: 'employee/queue-entries', name: 'employee-queue-entries', component: () => import('@/pages/employee/QueueEntriesPage.vue'), meta: { roles: ['employee', 'manager'] } },
         { path: 'employee/messages', name: 'employee-messages', component: () => import('@/pages/employee/MessagesPage.vue'), meta: { roles: ['employee', 'manager'] } },
 
         { path: 'manager/dashboard', name: 'manager-dashboard', component: () => import('@/pages/manager/DashboardPage.vue'), meta: { roles: ['manager'] } },
@@ -69,7 +73,6 @@ const router = createRouter({
         { path: 'admin/institution-requests', name: 'admin-institution-requests', component: () => import('@/pages/admin/InstitutionRequestsPage.vue'), meta: { roles: ['admin'] } },
         { path: 'admin/logs', name: 'admin-logs', component: () => import('@/pages/admin/LogsPage.vue'), meta: { roles: ['admin'] } },
         { path: 'admin/analytics', name: 'admin-analytics', component: () => import('@/pages/admin/AnalyticsPage.vue'), meta: { roles: ['admin'] } },
-        { path: 'admin/settings', name: 'admin-settings', component: () => import('@/pages/admin/SettingsPage.vue'), meta: { roles: ['admin'] } },
       ],
     },
 
