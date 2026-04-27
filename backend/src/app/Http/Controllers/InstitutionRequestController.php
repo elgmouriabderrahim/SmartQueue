@@ -61,15 +61,45 @@ class InstitutionRequestController extends Controller
         return $this->success($item->load('user'), 'Institution request submitted successfully.', 201);
     }
 
+    public function cancel(Request $request, InstitutionRequest $institutionRequest): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user || $user->role !== 'citizen') {
+            return $this->error('Only citizens can cancel institution requests.', 403);
+        }
+
+        if ((int) $institutionRequest->user_id !== (int) $user->id) {
+            return $this->error('Forbidden.', 403);
+        }
+
+        if ($institutionRequest->status !== 'pending') {
+            return $this->error('Only pending requests can be cancelled.', 422);
+        }
+
+        $institutionRequest->update([
+            'status' => 'cancelled',
+            'reviewed_by' => null,
+            'reviewed_at' => now(),
+            'rejection_reason' => null,
+        ]);
+
+        return $this->success($institutionRequest->fresh(['user', 'reviewer']), 'Institution request cancelled successfully.');
+    }
+
     public function approve(Request $request, InstitutionRequest $institutionRequest): JsonResponse
     {
         if ($institutionRequest->status !== 'pending') {
             return $this->error('Only pending requests can be approved.', 422);
         }
 
+        $owner = User::query()->findOrFail($institutionRequest->user_id);
+        if ($owner->currentInstitutionId()) {
+            return $this->error('User already belongs to an institution.', 422);
+        }
+
         $reviewer = $request->user();
 
-        DB::transaction(function () use ($institutionRequest, $reviewer): void {
+        DB::transaction(function () use ($institutionRequest, $reviewer, $owner): void {
             $institution = Institution::query()->create([
                 'name' => $institutionRequest->name,
                 'slug' => $institutionRequest->slug,
@@ -83,12 +113,13 @@ class InstitutionRequestController extends Controller
                 'status' => 'active',
             ]);
 
-            $owner = User::query()->findOrFail($institutionRequest->user_id);
             $owner->update([
                 'role' => 'manager',
                 'institution_id' => $institution->id,
                 'department_id' => null,
             ]);
+
+            $owner->syncInstitutionMembership();
 
             $institutionRequest->update([
                 'status' => 'approved',
