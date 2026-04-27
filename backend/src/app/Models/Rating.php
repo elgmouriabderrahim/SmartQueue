@@ -14,8 +14,8 @@ class Rating extends Model
         'user_id',
         'appointment_id',
         'service_id',
+        'institution_id',
         'score',
-        'comment',
     ];
 
     public function user(): BelongsTo
@@ -31,5 +31,10 @@ class Rating extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function institution(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class);
     }
 }

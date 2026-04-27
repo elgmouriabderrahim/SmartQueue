@@ -28,7 +28,10 @@ class RatingController extends Controller
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
 
         $ratings = Rating::query()
-            ->with(['user', 'appointment', 'service'])
+            ->with(['user', 'appointment', 'service', 'institution'])
+            ->when($request->filled('service_id'), fn ($query) => $query->where('service_id', $request->integer('service_id')))
+            ->when($request->filled('institution_id'), fn ($query) => $query->where('institution_id', $request->integer('institution_id')))
+            ->when($request->boolean('mine') && $request->user(), fn ($query) => $query->where('user_id', (int) $request->user()?->id))
             ->latest()
             ->paginate($perPage);
 
@@ -45,10 +48,10 @@ class RatingController extends Controller
                 required: ['user_id', 'appointment_id', 'service_id', 'score'],
                 properties: [
                     new OA\Property(property: 'user_id', type: 'integer', example: 1),
-                    new OA\Property(property: 'appointment_id', type: 'integer', example: 1),
-                    new OA\Property(property: 'service_id', type: 'integer', example: 1),
+                    new OA\Property(property: 'appointment_id', type: 'integer', nullable: true, example: 1),
+                    new OA\Property(property: 'service_id', type: 'integer', nullable: true, example: 1),
+                    new OA\Property(property: 'institution_id', type: 'integer', nullable: true, example: 1),
                     new OA\Property(property: 'score', type: 'integer', example: 5),
-                    new OA\Property(property: 'comment', type: 'string', nullable: true, example: 'Fast and professional service'),
                 ]
             )
         ),
@@ -61,25 +64,55 @@ class RatingController extends Controller
             return $this->error('Unauthenticated.', 401);
         }
 
-        $appointment = Appointment::query()->findOrFail($request->integer('appointment_id'));
-        if ($appointment->user_id !== $user->id) {
-            return $this->error('You can only rate your own appointments.', 403);
+        $serviceId = $request->integer('service_id');
+        $institutionId = $request->integer('institution_id');
+        $appointmentId = $request->integer('appointment_id');
+
+        if (($serviceId > 0 && $institutionId > 0) || ($serviceId <= 0 && $institutionId <= 0)) {
+            return $this->error('Choose exactly one rating target: service or institution.', 422);
         }
 
-        if ($appointment->status !== 'completed') {
-            return $this->error('Only completed appointments can be rated.', 422);
+        if ($appointmentId > 0) {
+            $appointment = Appointment::query()->findOrFail($appointmentId);
+            if ((int) $appointment->user_id !== (int) $user->id) {
+                return $this->error('You can only rate your own appointments.', 403);
+            }
+
+            if ($appointment->status !== 'completed') {
+                return $this->error('Only completed appointments can be rated.', 422);
+            }
+
+            if ($serviceId > 0 && (int) $appointment->service_id !== $serviceId) {
+                return $this->error('Service must match the appointment service.', 422);
+            }
+
+            if ($institutionId > 0) {
+                $matchesInstitution = $appointment->service()
+                    ->where('institution_id', $institutionId)
+                    ->exists();
+
+                if (! $matchesInstitution) {
+                    return $this->error('Institution must match the appointment institution.', 422);
+                }
+            }
         }
 
-        if ((int) $appointment->service_id !== $request->integer('service_id')) {
-            return $this->error('Service must match the appointment service.', 422);
+        $attributes = ['user_id' => (int) $user->id];
+        if ($serviceId > 0) {
+            $attributes['service_id'] = $serviceId;
+        }
+        if ($institutionId > 0) {
+            $attributes['institution_id'] = $institutionId;
         }
 
-        $rating = $this->ratingService->create([
-            ...$request->validated(),
-            'user_id' => $user->id,
+        $rating = Rating::query()->updateOrCreate($attributes, [
+            'appointment_id' => $appointmentId > 0 ? $appointmentId : null,
+            'service_id' => $serviceId > 0 ? $serviceId : null,
+            'institution_id' => $institutionId > 0 ? $institutionId : null,
+            'score' => $request->integer('score'),
         ]);
 
-        return $this->success($rating->load(['user', 'appointment', 'service']), 'Rating created successfully.', 201);
+        return $this->success($rating->load(['user', 'appointment', 'service', 'institution']), 'Rating saved successfully.', 201);
     }
 
     #[OA\Get(
@@ -91,7 +124,7 @@ class RatingController extends Controller
     )]
     public function show(Rating $rating): JsonResponse
     {
-        return $this->success($rating->load(['user', 'appointment', 'service']), 'Rating fetched successfully.');
+        return $this->success($rating->load(['user', 'appointment', 'service', 'institution']), 'Rating fetched successfully.');
     }
 
     public function update(UpdateRatingRequest $request, Rating $rating): JsonResponse
@@ -102,7 +135,7 @@ class RatingController extends Controller
 
         $updated = $this->ratingService->update($rating, $request->validated());
 
-        return $this->success($updated->load(['user', 'appointment', 'service']), 'Rating updated successfully.');
+        return $this->success($updated->load(['user', 'appointment', 'service', 'institution']), 'Rating updated successfully.');
     }
 
     public function destroy(Rating $rating): JsonResponse

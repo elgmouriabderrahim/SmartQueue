@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -41,9 +43,26 @@ class User extends Authenticatable
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function (self $user): void {
+            if (! $user->wasRecentlyCreated && ! $user->wasChanged('institution_id')) {
+                return;
+            }
+
+            $user->syncInstitutionMembership();
+        });
+    }
+
     public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class);
+    }
+
+    public function institutions(): BelongsToMany
+    {
+        return $this->belongsToMany(Institution::class, 'institution_user')
+            ->withTimestamps();
     }
 
     public function department(): BelongsTo
@@ -86,6 +105,30 @@ class User extends Authenticatable
         return in_array($this->role, ['manager', 'employee'], true)
             ? 'institution'
             : $this->role;
+    }
+
+    public function currentInstitutionId(): ?int
+    {
+        if ($this->institution_id) {
+            return (int) $this->institution_id;
+        }
+
+        $pivotInstitutionId = $this->institutions()->value('institutions.id');
+
+        return $pivotInstitutionId ? (int) $pivotInstitutionId : null;
+    }
+
+    public function syncInstitutionMembership(): void
+    {
+        if (! Schema::hasTable('institution_user')) {
+            return;
+        }
+
+        $this->institutions()->detach();
+
+        if ($this->institution_id) {
+            $this->institutions()->attach((int) $this->institution_id);
+        }
     }
 
 }

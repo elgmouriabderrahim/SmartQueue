@@ -14,9 +14,20 @@ class UpdateServiceRequest extends FormRequest
 
     public function rules(): array
     {
+        $service = $this->route('service');
+        $institutionId = $this->filled('institution_id')
+            ? $this->integer('institution_id')
+            : ($service ? (int) $service->institution_id : null);
+
         return [
             'institution_id' => ['sometimes', 'required', 'exists:institutions,id'],
-            'department_id' => ['sometimes', 'nullable', 'exists:departments,id'],
+            'department_id' => [
+                'sometimes',
+                'required',
+                Rule::exists('departments', 'id')->where(
+                    fn ($query) => $query->where('institution_id', $institutionId)
+                ),
+            ],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['sometimes', 'required', 'string'],
             'duration' => ['sometimes', 'required', 'integer', 'min:1'],

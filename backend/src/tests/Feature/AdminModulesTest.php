@@ -18,7 +18,7 @@ it('blocks admin modules for unauthenticated users', function () {
         ->assertJsonPath('success', false);
 });
 
-it('allows admin to manage departments and settings', function () {
+it('allows admin to manage departments', function () {
     $token = createAdminTokenForModulesTest();
 
     $institution = Institution::query()->create([
@@ -48,17 +48,6 @@ it('allows admin to manage departments and settings', function () {
         ->assertJsonPath('success', true)
         ->assertJsonPath('data.slug', 'civil-status');
 
-    $settingResponse = $this->withHeader('Authorization', 'Bearer '.$token)
-        ->postJson('/api/settings', [
-            'institution_id' => $institution->id,
-            'key' => 'queue.max_wait_minutes',
-            'value' => '45',
-            'type' => 'integer',
-        ]);
-
-    $settingResponse->assertCreated()
-        ->assertJsonPath('success', true)
-        ->assertJsonPath('data.key', 'queue.max_wait_minutes');
 });
 
 it('forbids institution role from admin only users endpoint', function () {
@@ -115,4 +104,30 @@ it('allows admin to approve an institution', function () {
         ->assertOk()
         ->assertJsonPath('success', true)
         ->assertJsonPath('data.status', 'active');
+});
+
+it('does not allow admin to create users through users endpoint', function () {
+    $token = createAdminTokenForModulesTest();
+
+    $this->withHeader('Authorization', 'Bearer '.$token)
+        ->postJson('/api/users', [
+            'first_name' => 'Blocked',
+            'last_name' => 'Creation',
+            'email' => 'blocked-create@test.com',
+            'password' => 'password123',
+            'role' => 'citizen',
+        ])
+        ->assertStatus(405)
+        ->assertJsonPath('success', false);
+});
+
+it('prevents admin from deleting their own account', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $token = $admin->createToken('test')->plainTextToken;
+
+    $this->withHeader('Authorization', 'Bearer '.$token)
+        ->deleteJson('/api/users/'.$admin->id)
+        ->assertStatus(422)
+        ->assertJsonPath('success', false)
+        ->assertJsonPath('message', 'You cannot delete your own account.');
 });

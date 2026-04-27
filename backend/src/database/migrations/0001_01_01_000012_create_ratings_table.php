@@ -11,11 +11,14 @@ return new class extends Migration
         Schema::create('ratings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('appointment_id')->unique()->constrained()->cascadeOnDelete();
-            $table->foreignId('service_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('appointment_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('service_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('institution_id')->nullable()->constrained()->nullOnDelete();
             $table->unsignedTinyInteger('score');
-            $table->text('comment')->nullable();
             $table->timestamps();
+
+            $table->unique(['user_id', 'service_id']);
+            $table->unique(['user_id', 'institution_id']);
         });
     }
 

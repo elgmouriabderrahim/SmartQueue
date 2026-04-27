@@ -29,11 +29,22 @@ class MessageController extends Controller
             return $this->error('Unauthenticated.', 401);
         }
 
+        $isInstitutionStaff = in_array($user->role, ['manager', 'employee'], true);
+
         $messages = Message::query()
-            ->with(['sender', 'recipient', 'appointment'])
-            ->where(function ($query) use ($user): void {
+            ->with([
+                'sender', 
+                'recipient', 
+                'appointment',
+                'institution'
+            ])
+            ->where(function ($query) use ($user, $isInstitutionStaff): void {
                 $query->where('sender_id', $user->id)
                     ->orWhere('recipient_id', $user->id);
+
+                if ($isInstitutionStaff && $user->institution_id) {
+                    $query->orWhere('institution_id', $user->institution_id);
+                }
             })
             ->latest()
             ->paginate(max(1, min(100, $request->integer('per_page', 15))));
@@ -83,11 +94,15 @@ class MessageController extends Controller
             return $this->error('Forbidden.', 403);
         }
 
-        return $this->success($message->load(['sender', 'recipient', 'appointment']), 'Message fetched successfully.');
+        return $this->success($message->load(['sender', 'recipient', 'appointment', 'institution']), 'Message fetched successfully.');
     }
 
     public function update(Request $request, Message $message): JsonResponse
     {
+        if (! $request->user()) {
+            return $this->error('Unauthenticated.', 401);
+        }
+
         if (! $this->canAccessMessage($request, $message)) {
             return $this->error('Forbidden.', 403);
         }
@@ -96,13 +111,11 @@ class MessageController extends Controller
             'status' => ['required', Rule::in(['new', 'read', 'in_progress', 'resolved', 'closed'])],
         ]);
 
-        if (! in_array($request->user()?->role, ['manager', 'employee'], true)) {
-            return $this->error('Only institution staff can update message status.', 403);
-        }
+        $nextStatus = $request->string('status')->toString();
 
-        $message->update(['status' => $request->string('status')->toString()]);
+        $message->update(['status' => $nextStatus]);
 
-        return $this->success($message->fresh()->load(['sender', 'recipient', 'appointment']), 'Message updated successfully.');
+        return $this->success($message->fresh()->load(['sender', 'recipient', 'appointment', 'institution']), 'Message updated successfully.');
     }
 
     public function destroy(Message $message): JsonResponse
@@ -123,7 +136,15 @@ class MessageController extends Controller
             return false;
         }
 
-        if ($message->sender_id === $user->id || $message->recipient_id === $user->id) {
+        $userId = (int) $user->id;
+
+        if ((int) $message->sender_id === $userId || (int) $message->recipient_id === $userId) {
+            return true;
+        }
+
+        if (in_array($user->role, ['manager', 'employee'], true)
+            && $user->institution_id
+            && (int) $message->institution_id === (int) $user->institution_id) {
             return true;
         }
 

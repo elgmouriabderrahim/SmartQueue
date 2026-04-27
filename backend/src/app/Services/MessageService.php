@@ -6,6 +6,7 @@ use App\Events\MessageSent;
 use App\Models\Institution;
 use App\Models\Message;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
 
 class MessageService
@@ -20,9 +21,14 @@ class MessageService
 
         $recipientId = isset($data['recipient_id']) ? (int) $data['recipient_id'] : 0;
 
-        if ($sender->role === 'citizen' && isset($data['institution_id'])) {
-            $institutionId = (int) $data['institution_id'];
-            $recipientId = $this->resolveInstitutionRecipientId($institutionId);
+        $institutionId = isset($data['institution_id']) ? (int) $data['institution_id'] : null;
+
+        if ($sender->role === 'citizen' && $institutionId && $institutionId > 0) {
+            $recipientId = $this->resolveInstitutionConversationRecipientId($sender, $institutionId);
+        }
+
+        if (in_array($sender->role, ['manager', 'employee'], true) && ! $institutionId) {
+            $institutionId = (int) ($sender->currentInstitutionId() ?? 0);
         }
 
         if ($recipientId === $sender->id) {
@@ -53,6 +59,7 @@ class MessageService
         $message = Message::query()->create([
             'sender_id' => $sender->id,
             'recipient_id' => $recipientId,
+            'institution_id' => $institutionId ?: null,
             'appointment_id' => $data['appointment_id'] ?? null,
             'content' => $data['content'],
             'status' => 'new',
@@ -60,7 +67,7 @@ class MessageService
 
         MessageSent::dispatch($message);
 
-        return $message->fresh(['sender', 'recipient', 'appointment']);
+        return $message->fresh(['sender', 'recipient', 'appointment', 'institution']);
     }
 
     private function resolveInstitutionRecipientId(int $institutionId): int
@@ -95,5 +102,40 @@ class MessageService
         throw ValidationException::withMessages([
             'institution_id' => ['No available manager or employee found for this institution.'],
         ]);
+    }
+
+    private function resolveInstitutionConversationRecipientId(User $sender, int $institutionId): int
+    {
+        $existingMessage = Message::query()
+            ->where(function (Builder $query) use ($sender, $institutionId): void {
+                $query->where('sender_id', $sender->id)
+                    ->whereHas('recipient', function (Builder $recipientQuery) use ($institutionId): void {
+                        $recipientQuery
+                            ->where('institution_id', $institutionId)
+                            ->whereIn('role', ['manager', 'employee']);
+                    });
+            })
+            ->orWhere(function (Builder $query) use ($sender, $institutionId): void {
+                $query->where('recipient_id', $sender->id)
+                    ->whereHas('sender', function (Builder $senderQuery) use ($institutionId): void {
+                        $senderQuery
+                            ->where('institution_id', $institutionId)
+                            ->whereIn('role', ['manager', 'employee']);
+                    });
+            })
+            ->latest('id')
+            ->first();
+
+        if ($existingMessage) {
+            $otherUserId = (int) ($existingMessage->sender_id === $sender->id
+                ? $existingMessage->recipient_id
+                : $existingMessage->sender_id);
+
+            if ($otherUserId > 0) {
+                return $otherUserId;
+            }
+        }
+
+        return $this->resolveInstitutionRecipientId($institutionId);
     }
 }

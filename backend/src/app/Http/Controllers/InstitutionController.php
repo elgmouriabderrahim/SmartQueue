@@ -58,7 +58,6 @@ class InstitutionController extends Controller
             'departments',
             'services',
             'users',
-            'settings',
             'analytics',
             'activityLogs',
         ]), 'Institution fetched successfully.');

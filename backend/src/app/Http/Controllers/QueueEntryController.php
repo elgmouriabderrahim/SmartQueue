@@ -33,6 +33,18 @@ class QueueEntryController extends Controller
 
     public function store(StoreQueueEntryRequest $request): JsonResponse
     {
+        $user = $request->user();
+        if ($user && in_array($user->role, ['manager', 'employee'], true)) {
+            $belongsToInstitution = \App\Models\Queue::query()
+                ->where('id', $request->integer('queue_id'))
+                ->whereHas('service', fn ($serviceQuery) => $serviceQuery->where('institution_id', $user->institution_id))
+                ->exists();
+
+            if (! $belongsToInstitution) {
+                return $this->error('Forbidden.', 403);
+            }
+        }
+
         $entry = $this->queueEntryService->create($request->validated());
 
         return $this->success($entry->load(['queue', 'appointment']), 'Queue entry created successfully.', 201);
