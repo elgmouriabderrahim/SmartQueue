@@ -8,7 +8,7 @@ import { useAuthStore } from '@/stores/auth'
 import { toApiError } from '@/utils/http'
 
 const authStore = useAuthStore()
-const canManageQueues = computed(() => authStore.user?.role === 'manager')
+const canManageQueues = computed(() => ['manager', 'employee'].includes(String(authStore.user?.role || '')))
 
 const loading = ref(false)
 const saving = ref(false)
